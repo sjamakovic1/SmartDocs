@@ -1,5 +1,6 @@
 import cors from 'cors';
 import express from 'express';
+import path from 'node:path';
 
 import documentRouter from './routes/documentRoutes';
 import { apiErrorHandler, sendApiError } from './utils/apiError';
@@ -26,6 +27,27 @@ app.post('/api/upload', (_req, res) => {
 });
 
 app.use('/api/documents', documentRouter);
+
+if (process.env.NODE_ENV === 'production') {
+  const clientDistPath = process.env.CLIENT_DIST_PATH
+    ? path.resolve(process.env.CLIENT_DIST_PATH)
+    : path.resolve(__dirname, '../../client/dist');
+
+  app.use(express.static(clientDistPath));
+
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      next();
+      return;
+    }
+
+    res.sendFile(path.join(clientDistPath, 'index.html'), (error) => {
+      if (error) {
+        next(error);
+      }
+    });
+  });
+}
 
 app.use((_req, res) => {
   sendApiError(res, 404, 'ROUTE_NOT_FOUND', 'Route not found.');
