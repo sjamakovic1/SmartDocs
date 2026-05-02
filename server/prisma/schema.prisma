@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Document {
+  id               String            @id
+  documentType     String
+  status           String
+  documentNumber   String?
+  supplierName     String?
+  issueDate        DateTime?
+  dueDate          DateTime?
+  currency         String?
+  subtotal         Decimal?
+  taxRate          Decimal?
+  tax              Decimal?
+  total            Decimal?
+  rawText          String?
+  fileName         String?
+  mimeType         String?
+  fileSize         Int?
+  rejectReason     String?
+  ocrConfidence    Float?
+  imageWidth       Int?
+  imageHeight      Int?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  lineItems        LineItem[]
+  validationIssues ValidationIssue[]
+}
+
+model LineItem {
+  id          String   @id
+  documentId  String
+  description String
+  quantity    Decimal
+  unitPrice   Decimal
+  lineTotal   Decimal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model ValidationIssue {
+  id         String   @id
+  documentId String
+  code       String
+  field      String?
+  severity   String
+  message    String
+  createdAt  DateTime @default(now())
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}

@@ -8,3 +8,5 @@ client/dist
 server/node_modules
 server/dist
 server/uploads
+*.traineddata
+server/eng.traineddata

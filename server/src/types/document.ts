@@ -8,8 +8,28 @@ export type DocumentStatus =
 
 export type ValidationSeverity = 'INFO' | 'WARNING' | 'ERROR';
 
+export type ValidationIssueCode =
+  | 'MISSING_FIELD'
+  | 'INVALID_DATE'
+  | 'UNSUPPORTED_CURRENCY'
+  | 'CURRENCY_INFERRED'
+  | 'OCR_LOW_CONFIDENCE'
+  | 'OCR_NO_TEXT_DETECTED'
+  | 'IMAGE_LOW_RESOLUTION'
+  | 'UNSUPPORTED_DOCUMENT_TYPE'
+  | 'OCR_CURRENCY_CORRECTED'
+  | 'OCR_LIMITED_EXTRACTION'
+  | 'MULTIPLE_DOCUMENTS_DETECTED'
+  | 'TAX_RATE_DERIVED'
+  | 'PLACEHOLDER_VALUE_DETECTED'
+  | 'DUPLICATE_DOCUMENT_NUMBER'
+  | 'LINE_TOTAL_MISMATCH'
+  | 'SUBTOTAL_MISMATCH'
+  | 'TAX_MISMATCH'
+  | 'TOTAL_MISMATCH';
+
 export interface LineItem {
-  id: string;
+  id?: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -17,18 +37,18 @@ export interface LineItem {
 }
 
 export interface ValidationIssue {
-  id: string;
+  id?: string;
   field: string;
-  code?: string;
+  code: ValidationIssueCode;
   message: string;
   severity: ValidationSeverity;
-  resolved: boolean;
+  resolved?: boolean;
   expectedValue?: string | number | null;
   actualValue?: string | number | null;
 }
 
-export interface Document {
-  id: string;
+export interface DocumentRecord {
+  id?: string;
   documentType: DocumentType;
   documentNumber?: string | null;
   supplierName?: string | null;
@@ -39,7 +59,7 @@ export interface Document {
   taxRate?: number | null;
   tax?: number | null;
   total?: number | null;
-  status: DocumentStatus;
+  status?: DocumentStatus;
   rejectReason?: string | null;
   rawText?: string | null;
   ocrConfidence?: number | null;
@@ -47,8 +67,8 @@ export interface Document {
   imageHeight?: number | null;
   fileName?: string | null;
   fileUrl?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  validationIssues?: ValidationIssue[];
+  createdAt?: string;
+  updatedAt?: string;
   lineItems: LineItem[];
-  validationIssues: ValidationIssue[];
 }
