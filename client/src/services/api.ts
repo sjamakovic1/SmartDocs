@@ -10,6 +10,11 @@ export function getApiErrorMessage(error: unknown) {
       return 'Backend API is not available. Please start the server.';
     }
 
+    const apiErrorMessage = error.response.data?.error?.message;
+    if (typeof apiErrorMessage === 'string') {
+      return apiErrorMessage;
+    }
+
     const responseMessage = error.response.data?.message;
     if (typeof responseMessage === 'string') {
       return responseMessage;

@@ -23,7 +23,7 @@ export function parseMoney(value: string | undefined): ParsedMoney {
     return emptyMoney();
   }
 
-  const currencyToken = value.match(new RegExp(String.raw`\b(${currencyLikeTokens.join('|')})\b`, 'i'))?.[1]?.toUpperCase() ?? null;
+  const currencyToken = findCurrencyToken(value);
   const correctedCurrency = currencyToken ? currencyCorrections[currencyToken] ?? null : null;
   const currencyCode = correctedCurrency ?? (currencyToken && supportedCurrencies.includes(currencyToken as typeof supportedCurrencies[number]) ? currencyToken : null);
   const symbol = value.match(/[$\u00A3\u20AC]/)?.[0] ?? null;
@@ -71,6 +71,18 @@ export function moneyValuePattern() {
 
 function extractNumericText(value: string) {
   return value.match(/[0-9][\d\s,.]*(?:[.,]\d+)?/)?.[0];
+}
+
+function findCurrencyToken(value: string) {
+  const currencyPattern = currencyLikeTokens.join('|');
+  const standaloneMatch = value.match(
+    new RegExp(String.raw`(?:^|[^A-Z0-9])(${currencyPattern})(?=$|[^A-Z0-9])`, 'i'),
+  )?.[1];
+  if (standaloneMatch) {
+    return standaloneMatch.toUpperCase();
+  }
+
+  return value.match(new RegExp(String.raw`\d\s*(${currencyPattern})(?=$|[^A-Z0-9])`, 'i'))?.[1]?.toUpperCase() ?? null;
 }
 
 function emptyMoney(): ParsedMoney {

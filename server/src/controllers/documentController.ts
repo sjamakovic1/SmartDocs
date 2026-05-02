@@ -18,13 +18,12 @@ import {
   uploadAndParseDocument,
   validateStoredDocument,
 } from '../services/documentService';
+import { sendApiError } from '../utils/apiError';
 
 export async function uploadDocument(req: Request, res: Response) {
   try {
     if (!req.file) {
-      return res.status(400).json({
-        message: 'No file uploaded.',
-      });
+      return sendApiError(res, 400, 'UPLOAD_NO_FILE', 'No file uploaded.');
     }
 
     const document = await uploadAndParseDocument(req.file);
@@ -34,26 +33,23 @@ export async function uploadDocument(req: Request, res: Response) {
     });
   } catch (error) {
     if (error instanceof UnsupportedFileTypeError) {
-      return res.status(400).json({
-        message: error.message,
-      });
+      return sendApiError(res, 400, 'UPLOAD_UNSUPPORTED_TYPE', error.message);
     }
 
     if (error instanceof StorageUploadError) {
-      return res.status(500).json({
-        message: error.message,
-      });
+      return sendApiError(
+        res,
+        500,
+        'FILE_STORAGE_UPLOAD_FAILED',
+        'Failed to store original uploaded file.',
+      );
     }
 
     if (error instanceof DocumentSaveError) {
-      return res.status(500).json({
-        message: error.message,
-      });
+      return sendApiError(res, 500, 'DOCUMENT_SAVE_FAILED', 'Failed to save document.');
     }
 
-    return res.status(500).json({
-      message: 'Failed to parse uploaded document.',
-    });
+    return sendApiError(res, 500, 'DOCUMENT_PARSE_FAILED', 'Failed to parse uploaded document.');
   }
 }
 
@@ -66,17 +62,13 @@ export async function listDocuments(_req: Request, res: Response) {
 export async function getDocument(req: Request, res: Response) {
   const id = getParam(req, 'id');
   if (!id) {
-    return res.status(400).json({
-      message: 'Document id is required.',
-    });
+    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
   }
 
   const document = await getDocumentById(id);
 
   if (!document) {
-    return res.status(404).json({
-      message: 'Document not found.',
-    });
+    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
   }
 
   return res.json({
@@ -87,48 +79,51 @@ export async function getDocument(req: Request, res: Response) {
 export async function getDocumentFileUrl(req: Request, res: Response) {
   const id = getParam(req, 'id');
   if (!id) {
-    return res.status(400).json({
-      message: 'Document id is required.',
-    });
+    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
   }
 
   try {
     const signedUrl = await createOriginalFileSignedUrl(id);
 
     if (!signedUrl) {
-      return res.status(404).json({
-        message: 'Original file not found.',
-      });
+      return sendApiError(
+        res,
+        404,
+        'ORIGINAL_FILE_NOT_FOUND',
+        'Original file is not available for this document.',
+      );
     }
 
     return res.json(signedUrl);
   } catch (error) {
     if (error instanceof StorageSignedUrlError) {
-      return res.status(500).json({
-        message: error.message,
-      });
+      return sendApiError(
+        res,
+        500,
+        'SIGNED_URL_FAILED',
+        'Failed to generate original file access link.',
+      );
     }
 
-    return res.status(500).json({
-      message: 'Failed to create original file URL.',
-    });
+    return sendApiError(
+      res,
+      500,
+      'SIGNED_URL_FAILED',
+      'Failed to generate original file access link.',
+    );
   }
 }
 
 export async function removeDocument(req: Request, res: Response) {
   const id = getParam(req, 'id');
   if (!id) {
-    return res.status(400).json({
-      message: 'Document id is required.',
-    });
+    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
   }
 
   const wasDeleted = await deleteDocument(id);
 
   if (!wasDeleted) {
-    return res.status(404).json({
-      message: 'Document not found.',
-    });
+    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
   }
 
   return res.json({
@@ -139,17 +134,13 @@ export async function removeDocument(req: Request, res: Response) {
 export async function validateDocument(req: Request, res: Response) {
   const id = getParam(req, 'id');
   if (!id) {
-    return res.status(400).json({
-      message: 'Document id is required.',
-    });
+    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
   }
 
   const document = await validateStoredDocument(id);
 
   if (!document) {
-    return res.status(404).json({
-      message: 'Document not found.',
-    });
+    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
   }
 
   return res.json({
@@ -160,18 +151,14 @@ export async function validateDocument(req: Request, res: Response) {
 export async function updateDocument(req: Request, res: Response) {
   const id = getParam(req, 'id');
   if (!id) {
-    return res.status(400).json({
-      message: 'Document id is required.',
-    });
+    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
   }
 
   try {
     const document = await updateStoredDocument(id, req.body);
 
     if (!document) {
-      return res.status(404).json({
-        message: 'Document not found.',
-      });
+      return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
     }
 
     return res.json({
@@ -179,32 +166,29 @@ export async function updateDocument(req: Request, res: Response) {
     });
   } catch (error) {
     if (error instanceof RejectedDocumentUpdateError) {
-      return res.status(400).json({
-        message: error.message,
-      });
+      return sendApiError(
+        res,
+        400,
+        'DOCUMENT_REJECTED_LOCKED',
+        'Reopen the document before making changes.',
+      );
     }
 
-    return res.status(500).json({
-      message: 'Failed to update document.',
-    });
+    return sendApiError(res, 500, 'DOCUMENT_UPDATE_FAILED', 'Failed to update document.');
   }
 }
 
 export async function confirmDocument(req: Request, res: Response) {
   const id = getParam(req, 'id');
   if (!id) {
-    return res.status(400).json({
-      message: 'Document id is required.',
-    });
+    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
   }
 
   try {
     const document = await confirmStoredDocument(id);
 
     if (!document) {
-      return res.status(404).json({
-        message: 'Document not found.',
-      });
+      return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
     }
 
     return res.json({
@@ -213,45 +197,43 @@ export async function confirmDocument(req: Request, res: Response) {
   } catch (error) {
     if (error instanceof DocumentValidationError) {
       return res.status(400).json({
-        message: error.message,
+        error: {
+          code: 'DOCUMENT_CONFIRM_BLOCKED',
+          message: 'Document cannot be confirmed while validation errors remain.',
+        },
         document: error.document,
         validationIssues: error.document.validationIssues,
       });
     }
 
     if (error instanceof RejectedDocumentUpdateError) {
-      return res.status(400).json({
-        message: error.message,
-      });
+      return sendApiError(
+        res,
+        400,
+        'DOCUMENT_REJECTED_LOCKED',
+        'Reopen the document before making changes.',
+      );
     }
 
-    return res.status(500).json({
-      message: 'Failed to confirm document.',
-    });
+    return sendApiError(res, 500, 'DOCUMENT_CONFIRM_FAILED', 'Failed to confirm document.');
   }
 }
 
 export async function rejectDocument(req: Request, res: Response) {
   const id = getParam(req, 'id');
   if (!id) {
-    return res.status(400).json({
-      message: 'Document id is required.',
-    });
+    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
   }
 
   const rejectReason = typeof req.body?.rejectReason === 'string' ? req.body.rejectReason.trim() : '';
   if (!rejectReason) {
-    return res.status(400).json({
-      message: 'Reject reason is required.',
-    });
+    return sendApiError(res, 400, 'REJECT_REASON_REQUIRED', 'Rejection reason is required.');
   }
 
   const document = await rejectStoredDocument(id, rejectReason);
 
   if (!document) {
-    return res.status(404).json({
-      message: 'Document not found.',
-    });
+    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
   }
 
   return res.json({
@@ -262,17 +244,13 @@ export async function rejectDocument(req: Request, res: Response) {
 export async function reopenDocument(req: Request, res: Response) {
   const id = getParam(req, 'id');
   if (!id) {
-    return res.status(400).json({
-      message: 'Document id is required.',
-    });
+    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
   }
 
   const document = await reopenStoredDocument(id);
 
   if (!document) {
-    return res.status(404).json({
-      message: 'Document not found.',
-    });
+    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
   }
 
   return res.json({

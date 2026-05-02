@@ -14,6 +14,7 @@ export default function DocumentsPage() {
   const [status, setStatus] = useState<'ALL' | DocumentStatus>('ALL');
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorTitle, setErrorTitle] = useState('Failed to load documents.');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,11 +23,13 @@ export default function DocumentsPage() {
 
   async function loadDocuments() {
     setIsLoading(true);
+    setErrorTitle('Failed to load documents.');
     setErrorMessage(null);
 
     try {
       setDocuments(await documentService.getDocuments());
     } catch (error) {
+      setErrorTitle('Failed to load documents.');
       setErrorMessage(getApiErrorMessage(error));
     } finally {
       setIsLoading(false);
@@ -52,9 +55,17 @@ export default function DocumentsPage() {
       return;
     }
 
-    await documentService.deleteDocument(documentToDelete.id);
-    setDocumentToDelete(null);
-    await loadDocuments();
+    setErrorMessage(null);
+
+    try {
+      await documentService.deleteDocument(documentToDelete.id);
+      setDocumentToDelete(null);
+      await loadDocuments();
+    } catch (error) {
+      setDocumentToDelete(null);
+      setErrorTitle('Failed to delete document.');
+      setErrorMessage(getApiErrorMessage(error));
+    }
   }
 
   function getDeleteIdentifier(document: Document) {
@@ -75,7 +86,7 @@ export default function DocumentsPage() {
         </Card>
       ) : errorMessage ? (
         <Card className="border-red-200 bg-red-50 p-6">
-          <p className="font-semibold text-red-800">Could not load documents.</p>
+          <p className="font-semibold text-red-800">{errorTitle}</p>
           <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
           <Button className="mt-4" onClick={loadDocuments} variant="secondary">
             Try again
