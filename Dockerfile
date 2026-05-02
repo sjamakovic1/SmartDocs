@@ -12,7 +12,7 @@ RUN apt-get update -y \
 COPY server/package*.json ./server/
 COPY client/package*.json ./client/
 
-RUN npm ci --prefix server
+RUN npm install --prefix server
 RUN npm ci --prefix client
 
 COPY server ./server
