@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
@@ -8,10 +9,10 @@ import DocumentForm from '../components/documents/DocumentForm';
 import LineItemsTable from '../components/documents/LineItemsTable';
 import RawTextPanel from '../components/documents/RawTextPanel';
 import ValidationIssuesList from '../components/documents/ValidationIssuesList';
-import { documentService } from '../services/documentService';
+import { getApiErrorMessage } from '../services/api';
+import { documentService, normalizeDocumentResponse } from '../services/documentService';
 import type { Document } from '../types/document';
 import { formatDate } from '../utils/formatDate';
-import { validateDocument } from '../utils/validateDocument';
 
 const rejectReasonOptions = [
   'Unsupported document type',
@@ -26,19 +27,33 @@ export default function DocumentDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [document, setDocument] = useState<Document | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState(rejectReasonOptions[0]);
   const [customRejectReason, setCustomRejectReason] = useState('');
 
   useEffect(() => {
-    if (!id) {
-      return;
+    if (id) {
+      void loadDocument(id);
     }
-
-    void documentService.getDocumentById(id).then(setDocument);
   }, [id]);
+
+  async function loadDocument(documentId: string) {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      setDocument(await documentService.getDocumentById(documentId));
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   async function saveDocument() {
     if (!document) {
@@ -46,35 +61,30 @@ export default function DocumentDetailsPage() {
     }
 
     setIsSaving(true);
-    const updatedDocument = await documentService.updateDocument(document.id, document);
-    setDocument(updatedDocument);
-    setFeedback('Changes saved.');
-    setIsSaving(false);
-  }
+    setFeedback(null);
 
-  async function rerunValidation() {
-    if (!document) {
-      return;
+    try {
+      const updatedDocument = await documentService.updateDocument(document.id, {
+        documentType: document.documentType,
+        documentNumber: document.documentNumber,
+        supplierName: document.supplierName,
+        issueDate: document.issueDate,
+        dueDate: document.dueDate,
+        currency: document.currency,
+        subtotal: document.subtotal,
+        taxRate: document.taxRate,
+        tax: document.tax,
+        total: document.total,
+        lineItems: document.lineItems,
+      });
+
+      setDocument(updatedDocument);
+      setFeedback('Changes saved and validation refreshed.');
+    } catch (error) {
+      setFeedback(getApiErrorMessage(error));
+    } finally {
+      setIsSaving(false);
     }
-
-    if (document.status === 'REJECTED') {
-      setFeedback('Reopen this document before running validation.');
-      return;
-    }
-
-    const allDocuments = await documentService.getDocuments();
-    const validationIssues = validateDocument(document, allDocuments);
-    setDocument({
-      ...document,
-      validationIssues,
-      status: validationIssues.length > 0 ? 'NEEDS_REVIEW' : document.status,
-      updatedAt: new Date().toISOString(),
-    });
-    setFeedback(
-      validationIssues.length > 0
-        ? `Validation completed with ${validationIssues.length} open issue${validationIssues.length === 1 ? '' : 's'}.`
-        : 'Validation completed. No open issues remain.',
-    );
   }
 
   async function confirmDocument() {
@@ -87,12 +97,21 @@ export default function DocumentDetailsPage() {
       return;
     }
 
-    const savedDocument = await documentService.updateDocument(document.id, document);
-    const updatedDocument = savedDocument
-      ? await documentService.confirmDocument(savedDocument.id)
-      : null;
-    setDocument(updatedDocument);
-    setFeedback('Document confirmed as validated.');
+    setIsProcessing(true);
+    setFeedback(null);
+
+    try {
+      setDocument(await documentService.confirmDocument(document.id));
+      setFeedback('Document confirmed as validated.');
+    } catch (error) {
+      const errorDocument = getErrorDocument(error);
+      if (errorDocument) {
+        setDocument(errorDocument);
+      }
+      setFeedback(getApiErrorMessage(error));
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   async function rejectDocument() {
@@ -100,19 +119,26 @@ export default function DocumentDetailsPage() {
       return;
     }
 
-    const finalReason =
-      rejectReason === 'Other' ? customRejectReason.trim() : rejectReason;
+    const finalReason = rejectReason === 'Other' ? customRejectReason.trim() : rejectReason;
 
     if (!finalReason) {
       setFeedback('Choose a rejection reason before rejecting this document.');
       return;
     }
 
-    const updatedDocument = await documentService.rejectDocument(document.id, finalReason);
-    setDocument(updatedDocument);
-    setIsRejectDialogOpen(false);
-    setCustomRejectReason('');
-    setFeedback('Document rejected.');
+    setIsProcessing(true);
+    setFeedback(null);
+
+    try {
+      setDocument(await documentService.rejectDocument(document.id, finalReason));
+      setIsRejectDialogOpen(false);
+      setCustomRejectReason('');
+      setFeedback('Document rejected.');
+    } catch (error) {
+      setFeedback(getApiErrorMessage(error));
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   async function reopenDocument() {
@@ -120,15 +146,34 @@ export default function DocumentDetailsPage() {
       return;
     }
 
-    const updatedDocument = await documentService.reopenDocument(document.id);
-    setDocument(updatedDocument);
-    setFeedback('Document reopened for review.');
+    setIsProcessing(true);
+    setFeedback(null);
+
+    try {
+      setDocument(await documentService.reopenDocument(document.id));
+      setFeedback('Document reopened for review.');
+    } catch (error) {
+      setFeedback(getApiErrorMessage(error));
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
-  if (!document) {
+  if (isLoading) {
     return (
       <Card className="p-6">
-        <p className="text-slate-500">Document not found or still loading.</p>
+        <p className="text-slate-500">Loading document...</p>
+      </Card>
+    );
+  }
+
+  if (errorMessage || !document) {
+    return (
+      <Card className={errorMessage ? 'border-red-200 bg-red-50 p-6' : 'p-6'}>
+        <p className={errorMessage ? 'font-semibold text-red-800' : 'text-slate-500'}>
+          {errorMessage ? 'Could not load document.' : 'Document not found.'}
+        </p>
+        {errorMessage ? <p className="mt-1 text-sm text-red-700">{errorMessage}</p> : null}
         <Button className="mt-4" onClick={() => navigate('/documents')} variant="secondary">
           Back to documents
         </Button>
@@ -139,8 +184,7 @@ export default function DocumentDetailsPage() {
   const openIssueCount = document.validationIssues.filter((issue) => !issue.resolved).length;
   const isRejected = document.status === 'REJECTED';
   const canConfirm = openIssueCount === 0 && !isRejected;
-  const finalRejectReason =
-    rejectReason === 'Other' ? customRejectReason.trim() : rejectReason;
+  const finalRejectReason = rejectReason === 'Other' ? customRejectReason.trim() : rejectReason;
 
   return (
     <div className="space-y-6">
@@ -156,7 +200,7 @@ export default function DocumentDetailsPage() {
             <StatusBadge status={document.status} />
           </div>
           <p className="mt-1 text-slate-500">
-            Created {formatDate(document.createdAt)} · Updated {formatDate(document.updatedAt)}
+            Created {formatDate(document.createdAt)} - Updated {formatDate(document.updatedAt)}
           </p>
           {feedback ? (
             <p className="mt-3 inline-flex rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
@@ -166,19 +210,18 @@ export default function DocumentDetailsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {isRejected ? (
-            <Button onClick={reopenDocument}>Reopen for review</Button>
+            <Button disabled={isProcessing} onClick={reopenDocument}>
+              {isProcessing ? 'Reopening...' : 'Reopen for review'}
+            </Button>
           ) : (
             <>
               <Button disabled={isSaving} onClick={saveDocument} variant="secondary">
                 {isSaving ? 'Saving...' : 'Save changes'}
               </Button>
-              <Button disabled={isSaving} onClick={rerunValidation} variant="secondary">
-                Re-run validation
-              </Button>
-              <Button disabled={!canConfirm} onClick={confirmDocument}>
+              <Button disabled={!canConfirm || isProcessing || isSaving} onClick={confirmDocument}>
                 Confirm as Validated
               </Button>
-              <Button onClick={() => setIsRejectDialogOpen(true)} variant="danger">
+              <Button disabled={isProcessing || isSaving} onClick={() => setIsRejectDialogOpen(true)} variant="danger">
                 Reject document
               </Button>
             </>
@@ -196,9 +239,7 @@ export default function DocumentDetailsPage() {
               </p>
               <div className="mt-4 grid gap-3 md:grid-cols-[280px_1fr]">
                 <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Reason
-                  </span>
+                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Reason</span>
                   <select
                     className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                     value={rejectReason}
@@ -230,8 +271,8 @@ export default function DocumentDetailsPage() {
               <Button onClick={() => setIsRejectDialogOpen(false)} variant="secondary">
                 Cancel
               </Button>
-              <Button disabled={!finalRejectReason} onClick={rejectDocument} variant="danger">
-                Confirm reject
+              <Button disabled={!finalRejectReason || isProcessing} onClick={rejectDocument} variant="danger">
+                {isProcessing ? 'Rejecting...' : 'Confirm reject'}
               </Button>
             </div>
           </div>
@@ -269,4 +310,12 @@ export default function DocumentDetailsPage() {
       </div>
     </div>
   );
+}
+
+function getErrorDocument(error: unknown) {
+  if (axios.isAxiosError(error) && error.response?.data?.document) {
+    return normalizeDocumentResponse(error.response.data.document);
+  }
+
+  return null;
 }

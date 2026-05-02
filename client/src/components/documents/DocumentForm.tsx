@@ -11,6 +11,8 @@ interface DocumentFormProps {
   onDocumentChange: (document: Document) => void;
 }
 
+const supportedCurrencies = ['EUR', 'BAM', 'USD', 'GBP', 'AED'];
+
 export default function DocumentForm({
   document,
   isReadOnly = false,
@@ -30,6 +32,11 @@ export default function DocumentForm({
   return (
     <Card className="p-5">
       <h2 className="text-lg font-semibold text-slate-950">Extracted fields</h2>
+      {!isReadOnly ? (
+        <p className="mt-1 text-sm text-slate-500">
+          Saving changes automatically re-runs validation.
+        </p>
+      ) : null}
       <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <Select
           label="Document type"
@@ -67,12 +74,19 @@ export default function DocumentForm({
           value={document.dueDate ?? ''}
           onChange={(event) => updateField('dueDate', event.target.value || null)}
         />
-        <Input
+        <Select
           label="Currency"
           disabled={isReadOnly}
           value={document.currency ?? ''}
-          onChange={(event) => updateField('currency', event.target.value.toUpperCase() || null)}
-        />
+          onChange={(event) => updateField('currency', event.target.value || null)}
+        >
+          <option value="">Select currency</option>
+          {supportedCurrencies.map((currency) => (
+            <option key={currency} value={currency}>
+              {currency}
+            </option>
+          ))}
+        </Select>
         <Input
           label="Subtotal"
           disabled={isReadOnly}

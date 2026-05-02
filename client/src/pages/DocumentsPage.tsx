@@ -4,6 +4,7 @@ import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import DocumentFilters from '../components/documents/DocumentFilters';
 import DocumentTable from '../components/documents/DocumentTable';
+import { getApiErrorMessage } from '../services/api';
 import { documentService } from '../services/documentService';
 import type { Document, DocumentStatus } from '../types/document';
 
@@ -12,10 +13,25 @@ export default function DocumentsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'ALL' | DocumentStatus>('ALL');
   const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    void documentService.getDocuments().then(setDocuments);
+    void loadDocuments();
   }, []);
+
+  async function loadDocuments() {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      setDocuments(await documentService.getDocuments());
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   const filteredDocuments = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -38,7 +54,7 @@ export default function DocumentsPage() {
 
     await documentService.deleteDocument(documentToDelete.id);
     setDocumentToDelete(null);
-    setDocuments(await documentService.getDocuments());
+    await loadDocuments();
   }
 
   function getDeleteIdentifier(document: Document) {
@@ -53,7 +69,28 @@ export default function DocumentsPage() {
         onSearchChange={setSearch}
         onStatusChange={setStatus}
       />
-      <DocumentTable documents={filteredDocuments} onDeleteDocument={setDocumentToDelete} />
+      {isLoading ? (
+        <Card className="p-6">
+          <p className="text-sm text-slate-500">Loading documents...</p>
+        </Card>
+      ) : errorMessage ? (
+        <Card className="border-red-200 bg-red-50 p-6">
+          <p className="font-semibold text-red-800">Could not load documents.</p>
+          <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+          <Button className="mt-4" onClick={loadDocuments} variant="secondary">
+            Try again
+          </Button>
+        </Card>
+      ) : documents.length === 0 ? (
+        <Card className="p-8 text-center">
+          <p className="font-semibold text-slate-950">No documents uploaded yet.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Upload a PDF, CSV, or TXT document to start reviewing extracted data.
+          </p>
+        </Card>
+      ) : (
+        <DocumentTable documents={filteredDocuments} onDeleteDocument={setDocumentToDelete} />
+      )}
 
       {documentToDelete ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">

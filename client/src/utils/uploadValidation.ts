@@ -16,7 +16,7 @@ export function isSupportedUploadFile(file: File) {
 }
 
 export function getSupportedFormatsLabel() {
-  return 'PDF, PNG, JPG, JPEG, CSV, TXT';
+  return 'PDF, CSV, TXT, PNG, JPG, JPEG';
 }
 
 function getFileExtension(fileName: string) {

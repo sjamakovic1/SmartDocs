@@ -1,6 +1,8 @@
 import cors from 'cors';
 import express from 'express';
 
+import documentRouter from './routes/documentRoutes';
+
 const app = express();
 
 app.use(cors());
@@ -13,16 +15,12 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-app.get('/api/documents', (_req, res) => {
-  res.json({
-    documents: [],
-  });
-});
-
 app.post('/api/upload', (_req, res) => {
   res.status(501).json({
     message: 'Document upload endpoint is not implemented yet',
   });
 });
+
+app.use('/api/documents', documentRouter);
 
 export default app;
