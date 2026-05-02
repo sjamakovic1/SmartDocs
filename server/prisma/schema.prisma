@@ -25,6 +25,8 @@ model Document {
   fileName         String?
   mimeType         String?
   fileSize         Int?
+  fileStorageBucket String?
+  fileStoragePath   String?
   rejectReason     String?
   ocrConfidence    Float?
   imageWidth       Int?

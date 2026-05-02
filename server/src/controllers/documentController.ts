@@ -2,13 +2,17 @@ import type { Request, Response } from 'express';
 
 import {
   confirmStoredDocument,
+  createOriginalFileSignedUrl,
   deleteDocument,
+  DocumentSaveError,
   DocumentValidationError,
   getDocumentById,
   getDocuments,
   rejectStoredDocument,
   RejectedDocumentUpdateError,
   reopenStoredDocument,
+  StorageSignedUrlError,
+  StorageUploadError,
   UnsupportedFileTypeError,
   updateStoredDocument,
   uploadAndParseDocument,
@@ -31,6 +35,18 @@ export async function uploadDocument(req: Request, res: Response) {
   } catch (error) {
     if (error instanceof UnsupportedFileTypeError) {
       return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    if (error instanceof StorageUploadError) {
+      return res.status(500).json({
+        message: error.message,
+      });
+    }
+
+    if (error instanceof DocumentSaveError) {
+      return res.status(500).json({
         message: error.message,
       });
     }
@@ -66,6 +82,37 @@ export async function getDocument(req: Request, res: Response) {
   return res.json({
     document,
   });
+}
+
+export async function getDocumentFileUrl(req: Request, res: Response) {
+  const id = getParam(req, 'id');
+  if (!id) {
+    return res.status(400).json({
+      message: 'Document id is required.',
+    });
+  }
+
+  try {
+    const signedUrl = await createOriginalFileSignedUrl(id);
+
+    if (!signedUrl) {
+      return res.status(404).json({
+        message: 'Original file not found.',
+      });
+    }
+
+    return res.json(signedUrl);
+  } catch (error) {
+    if (error instanceof StorageSignedUrlError) {
+      return res.status(500).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: 'Failed to create original file URL.',
+    });
+  }
 }
 
 export async function removeDocument(req: Request, res: Response) {

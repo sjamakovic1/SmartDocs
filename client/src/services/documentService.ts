@@ -9,6 +9,11 @@ interface DocumentsResponse {
   documents: BackendDocument[];
 }
 
+interface FileUrlResponse {
+  signedUrl: string;
+  expiresIn: number;
+}
+
 type BackendDocument = Omit<Document, 'lineItems' | 'validationIssues'> & {
   lineItems?: Partial<LineItem>[];
   validationIssues?: Partial<ValidationIssue>[];
@@ -58,6 +63,11 @@ export const documentService = {
 
   async deleteDocument(id: string) {
     await api.delete(`/documents/${id}`);
+  },
+
+  async getOriginalFileUrl(id: string) {
+    const response = await api.get<FileUrlResponse>(`/documents/${id}/file-url`);
+    return response.data.signedUrl;
   },
 
   async revalidateDocument(id: string) {
