@@ -93,7 +93,7 @@ export default function DocumentDetailsPage() {
     }
 
     if (document.validationIssues.some((issue) => !issue.resolved)) {
-      setFeedback('Resolve validation issues before confirming this document.');
+      setFeedback('Document cannot be confirmed while validation errors remain.');
       return;
     }
 

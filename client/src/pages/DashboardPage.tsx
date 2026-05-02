@@ -55,9 +55,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {documents.length === 0 ? (
         <Card className="p-6">
-          <p className="font-semibold text-slate-950">No backend documents yet.</p>
+          <p className="font-semibold text-slate-950">No documents yet.</p>
           <p className="mt-1 text-sm text-slate-500">
-            Upload a PDF, CSV, or TXT file to populate this dashboard.
+            Upload a document to populate this dashboard.
           </p>
         </Card>
       ) : null}

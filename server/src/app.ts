@@ -2,6 +2,7 @@ import cors from 'cors';
 import express from 'express';
 
 import documentRouter from './routes/documentRoutes';
+import { apiErrorHandler, sendApiError } from './utils/apiError';
 
 const app = express();
 
@@ -16,11 +17,20 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.post('/api/upload', (_req, res) => {
-  res.status(501).json({
-    message: 'Document upload endpoint is not implemented yet',
-  });
+  sendApiError(
+    res,
+    501,
+    'UPLOAD_ENDPOINT_NOT_IMPLEMENTED',
+    'Document upload endpoint is not implemented yet.',
+  );
 });
 
 app.use('/api/documents', documentRouter);
+
+app.use((_req, res) => {
+  sendApiError(res, 404, 'ROUTE_NOT_FOUND', 'Route not found.');
+});
+
+app.use(apiErrorHandler);
 
 export default app;
