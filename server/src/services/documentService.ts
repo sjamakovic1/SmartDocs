@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 import { prisma } from '../config/prisma';
+import { getStorageBucketName, supabase } from '../config/supabase';
 import { parseCsvDocument } from '../parsers/csvParser';
 import { parseImageDocument } from '../parsers/imageParser';
 import { parsePdfDocument } from '../parsers/pdfParser';
@@ -28,6 +29,8 @@ export interface StoredDocument extends DocumentRecord {
   updatedAt: string;
   mimeType?: string | null;
   fileSize?: number | null;
+  fileStorageBucket?: string | null;
+  fileStoragePath?: string | null;
 }
 
 export type DocumentUpdatePayload = Partial<
@@ -96,19 +99,61 @@ export async function uploadAndParseDocument(file: UploadedDocumentFile): Promis
   const status = getSuggestedStatus(documentWithId, combinedIssues);
 
   const createdDocument = await prisma.document.create({
-    data: {
-      ...toPrismaDocumentCreateInput(documentWithId, status),
-      lineItems: {
-        create: toPrismaLineItems(documentWithId.lineItems),
+      data: {
+        ...toPrismaDocumentCreateInput(documentWithId, status),
+        lineItems: {
+          create: toPrismaLineItems(documentWithId.lineItems),
+        },
+        validationIssues: {
+          create: toPrismaValidationIssues(combinedIssues),
+        },
       },
-      validationIssues: {
-        create: toPrismaValidationIssues(combinedIssues),
-      },
-    },
-    include: documentInclude,
-  });
+      include: documentInclude,
+    })
+    .catch((error: unknown) => {
+      throw new DocumentSaveError('Failed to save parsed document to the database.', error);
+    });
 
-  return toStoredDocument(createdDocument);
+  let fileStorage: Prisma.DocumentUpdateInput;
+  try {
+    fileStorage = await uploadOriginalFile(file, createdDocument.id);
+  } catch (error) {
+    await cleanupCreatedDocument(createdDocument.id);
+
+    if (error instanceof StorageUploadError) {
+      throw error;
+    }
+
+    throw new StorageUploadError('Failed to upload original file to Supabase Storage.');
+  }
+
+  const updatedDocument = await prisma.document.update({
+      where: {
+        id: createdDocument.id,
+      },
+      data: fileStorage,
+      include: documentInclude,
+    })
+    .catch(async (error: unknown) => {
+      if (typeof fileStorage.fileStoragePath === 'string') {
+        await removeOriginalFile(
+          typeof fileStorage.fileStorageBucket === 'string' ? fileStorage.fileStorageBucket : null,
+          fileStorage.fileStoragePath,
+        );
+      }
+
+      throw new DocumentSaveError('Failed to save original file metadata to the database.', error);
+    });
+
+  return toStoredDocument(updatedDocument);
+}
+
+async function cleanupCreatedDocument(id: string) {
+  await prisma.document.delete({
+    where: {
+      id,
+    },
+  }).catch(() => undefined);
 }
 
 async function parseUploadedDocument(
@@ -152,6 +197,24 @@ export async function getDocumentById(id: string): Promise<StoredDocument | null
 }
 
 export async function deleteDocument(id: string): Promise<boolean> {
+  const document = await prisma.document.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      fileStorageBucket: true,
+      fileStoragePath: true,
+    },
+  });
+
+  if (!document) {
+    return false;
+  }
+
+  if (document.fileStoragePath) {
+    await removeOriginalFile(document.fileStorageBucket, document.fileStoragePath);
+  }
+
   const deleted = await prisma.document.deleteMany({
     where: {
       id,
@@ -159,6 +222,37 @@ export async function deleteDocument(id: string): Promise<boolean> {
   });
 
   return deleted.count > 0;
+}
+
+export async function createOriginalFileSignedUrl(id: string) {
+  const document = await prisma.document.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      fileStorageBucket: true,
+      fileStoragePath: true,
+    },
+  });
+
+  if (!document?.fileStoragePath) {
+    return null;
+  }
+
+  const expiresIn = 3600;
+  const bucket = document.fileStorageBucket ?? getStorageBucketName();
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(document.fileStoragePath, expiresIn);
+
+  if (error || !data?.signedUrl) {
+    throw new StorageSignedUrlError('Failed to create signed URL for original file.');
+  }
+
+  return {
+    signedUrl: data.signedUrl,
+    expiresIn,
+  };
 }
 
 export async function validateStoredDocument(id: string): Promise<StoredDocument | null> {
@@ -355,6 +449,30 @@ export class DocumentValidationError extends Error {
   }
 }
 
+export class StorageUploadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StorageUploadError';
+  }
+}
+
+export class StorageSignedUrlError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StorageSignedUrlError';
+  }
+}
+
+export class DocumentSaveError extends Error {
+  constructor(
+    message: string,
+    public cause?: unknown,
+  ) {
+    super(message);
+    this.name = 'DocumentSaveError';
+  }
+}
+
 async function replaceValidationIssues(
   id: string,
   validationIssues: ValidationIssue[],
@@ -436,6 +554,8 @@ function toPrismaDocumentCreateInput(
     fileName: document.fileName ?? null,
     mimeType: document.mimeType ?? null,
     fileSize: document.fileSize ?? null,
+    fileStorageBucket: document.fileStorageBucket ?? null,
+    fileStoragePath: document.fileStoragePath ?? null,
     rejectReason: document.rejectReason ?? null,
     ocrConfidence: document.ocrConfidence ?? null,
     imageWidth: document.imageWidth ?? null,
@@ -501,6 +621,8 @@ function toStoredDocument(document: PrismaDocumentWithRelations): StoredDocument
     fileUrl: null,
     mimeType: document.mimeType,
     fileSize: document.fileSize,
+    fileStorageBucket: document.fileStorageBucket,
+    fileStoragePath: document.fileStoragePath,
     validationIssues: document.validationIssues.map((issue) => ({
       id: issue.id,
       field: issue.field ?? '',
@@ -551,6 +673,64 @@ function toNumber(value: Prisma.Decimal | null) {
 
 function createDocumentId() {
   return `doc_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+async function uploadOriginalFile(file: UploadedDocumentFile, documentId: string) {
+  const bucket = getStorageBucketName();
+  const fileStoragePath = createStoragePath(documentId, file.originalname);
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(fileStoragePath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: false,
+    });
+
+  if (error) {
+    throw new StorageUploadError(`Failed to upload original file to Supabase Storage: ${error.message}`);
+  }
+
+  return {
+    fileStorageBucket: bucket,
+    fileStoragePath,
+    fileName: file.originalname,
+    mimeType: file.mimetype,
+    fileSize: file.size ?? file.buffer.byteLength,
+  };
+}
+
+async function removeOriginalFile(bucket: string | null, fileStoragePath: string) {
+  const { error } = await supabase.storage
+    .from(bucket ?? getStorageBucketName())
+    .remove([fileStoragePath]);
+
+  if (error) {
+    console.warn(`Failed to delete original file from Supabase Storage: ${error.message}`);
+  }
+}
+
+function createStoragePath(documentId: string, originalFileName: string) {
+  const safeFileName = sanitizeFileName(originalFileName);
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}Z$/, 'Z');
+
+  return `documents/${documentId}/${timestamp}-${safeFileName}`;
+}
+
+function sanitizeFileName(fileName: string) {
+  const fallbackName = 'uploaded-file';
+  const trimmed = fileName.trim();
+  const extensionMatch = trimmed.match(/(\.[A-Za-z0-9]{1,12})$/);
+  const extension = extensionMatch?.[1]?.toLowerCase() ?? '';
+  const baseName = (extension ? trimmed.slice(0, -extension.length) : trimmed)
+    .normalize('NFKD')
+    .replace(/[^\w.-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^[-.]+|[-.]+$/g, '')
+    .toLowerCase();
+
+  return `${baseName || fallbackName}${extension}`;
 }
 
 function createLineItemId(index: number) {

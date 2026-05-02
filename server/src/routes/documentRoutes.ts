@@ -3,6 +3,7 @@ import { Router } from 'express';
 import {
   confirmDocument,
   getDocument,
+  getDocumentFileUrl,
   listDocuments,
   rejectDocument,
   removeDocument,
@@ -17,6 +18,7 @@ const documentRouter = Router();
 
 documentRouter.get('/', listDocuments);
 documentRouter.post('/upload', upload.single('file'), uploadDocument);
+documentRouter.get('/:id/file-url', getDocumentFileUrl);
 documentRouter.get('/:id', getDocument);
 documentRouter.put('/:id', updateDocument);
 documentRouter.delete('/:id', removeDocument);

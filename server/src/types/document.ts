@@ -67,6 +67,10 @@ export interface DocumentRecord {
   imageHeight?: number | null;
   fileName?: string | null;
   fileUrl?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  fileStorageBucket?: string | null;
+  fileStoragePath?: string | null;
   validationIssues?: ValidationIssue[];
   createdAt?: string;
   updatedAt?: string;

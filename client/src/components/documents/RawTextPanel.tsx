@@ -4,9 +4,15 @@ interface RawTextPanelProps {
   rawText?: string | null;
   fileName?: string | null;
   fileUrl?: string | null;
+  onOpenOriginalFile?: () => void;
 }
 
-export default function RawTextPanel({ rawText, fileName, fileUrl }: RawTextPanelProps) {
+export default function RawTextPanel({
+  rawText,
+  fileName,
+  fileUrl,
+  onOpenOriginalFile,
+}: RawTextPanelProps) {
   return (
     <Card className="p-5">
       <h2 className="text-lg font-semibold text-slate-950">Original file and extracted text</h2>
@@ -16,6 +22,14 @@ export default function RawTextPanel({ rawText, fileName, fileUrl }: RawTextPane
           <a className="mt-1 block font-semibold text-slate-950 hover:underline" href={fileUrl}>
             {fileName ?? 'Open file'}
           </a>
+        ) : onOpenOriginalFile ? (
+          <button
+            className="mt-1 font-semibold text-slate-950 hover:underline"
+            onClick={onOpenOriginalFile}
+            type="button"
+          >
+            Open original file
+          </button>
         ) : (
           <p className="mt-1 font-semibold text-slate-950">{fileName ?? 'No file attached'}</p>
         )}

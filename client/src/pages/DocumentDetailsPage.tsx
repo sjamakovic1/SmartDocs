@@ -159,6 +159,21 @@ export default function DocumentDetailsPage() {
     }
   }
 
+  async function openOriginalFile() {
+    if (!document) {
+      return;
+    }
+
+    setFeedback(null);
+
+    try {
+      const signedUrl = await documentService.getOriginalFileUrl(document.id);
+      window.open(signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setFeedback(getApiErrorMessage(error));
+    }
+  }
+
   if (isLoading) {
     return (
       <Card className="p-6">
@@ -303,6 +318,7 @@ export default function DocumentDetailsPage() {
           <RawTextPanel
             fileName={document.fileName}
             fileUrl={document.fileUrl}
+            onOpenOriginalFile={openOriginalFile}
             rawText={document.rawText}
           />
         </div>
