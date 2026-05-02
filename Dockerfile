@@ -13,7 +13,7 @@ COPY server/package*.json ./server/
 COPY client/package*.json ./client/
 
 RUN npm install --prefix server
-RUN npm ci --prefix client
+RUN npm install --prefix client
 
 COPY server ./server
 COPY client ./client
