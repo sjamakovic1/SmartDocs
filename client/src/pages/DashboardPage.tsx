@@ -32,34 +32,17 @@ export default function DashboardPage() {
   }
 
   if (isLoading) {
-    return (
-      <Card className="p-6">
-        <p className="text-sm text-slate-500">Loading dashboard...</p>
-      </Card>
-    );
+    return <DashboardLoadingState />;
   }
 
   if (errorMessage) {
-    return (
-      <Card className="border-red-200 bg-red-50 p-6">
-        <p className="font-semibold text-red-800">Could not load dashboard data.</p>
-        <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
-        <Button className="mt-4" onClick={loadDocuments} variant="secondary">
-          Try again
-        </Button>
-      </Card>
-    );
+    return <DashboardErrorState errorMessage={errorMessage} onRetry={loadDocuments} />;
   }
 
   return (
     <div className="space-y-6">
       {documents.length === 0 ? (
-        <Card className="p-6">
-          <p className="font-semibold text-slate-950">No documents yet.</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Upload a document to populate this dashboard.
-          </p>
-        </Card>
+        <EmptyDashboardNotice />
       ) : null}
       <DashboardStats documents={documents} />
       <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
@@ -67,5 +50,42 @@ export default function DashboardPage() {
         <RecentDocuments documents={documents} />
       </div>
     </div>
+  );
+}
+
+function DashboardLoadingState() {
+  return (
+    <Card className="p-6">
+      <p className="text-sm text-slate-500">Loading dashboard...</p>
+    </Card>
+  );
+}
+
+function DashboardErrorState({
+  errorMessage,
+  onRetry,
+}: {
+  errorMessage: string;
+  onRetry: () => void;
+}) {
+  return (
+    <Card className="border-red-200 bg-red-50 p-6">
+      <p className="font-semibold text-red-800">Could not load dashboard data.</p>
+      <p className="mt-1 text-sm text-red-700">{errorMessage}</p>
+      <Button className="mt-4" onClick={onRetry} variant="secondary">
+        Try again
+      </Button>
+    </Card>
+  );
+}
+
+function EmptyDashboardNotice() {
+  return (
+    <Card className="p-6">
+      <p className="font-semibold text-slate-950">No documents yet.</p>
+      <p className="mt-1 text-sm text-slate-500">
+        Upload a document to populate this dashboard.
+      </p>
+    </Card>
   );
 }

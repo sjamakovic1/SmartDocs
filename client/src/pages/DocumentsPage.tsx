@@ -37,17 +37,7 @@ export default function DocumentsPage() {
   }
 
   const filteredDocuments = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-
-    return documents.filter((document) => {
-      const matchesStatus = status === 'ALL' || document.status === status;
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        (document.documentNumber ?? '').toLowerCase().includes(normalizedSearch) ||
-        (document.supplierName ?? '').toLowerCase().includes(normalizedSearch);
-
-      return matchesStatus && matchesSearch;
-    });
+    return filterDocuments(documents, search, status);
   }, [documents, search, status]);
 
   async function confirmDeleteDocument() {
@@ -66,10 +56,6 @@ export default function DocumentsPage() {
       setErrorTitle('Failed to delete document.');
       setErrorMessage(getApiErrorMessage(error));
     }
-  }
-
-  function getDeleteIdentifier(document: Document) {
-    return document.documentNumber ?? document.fileName ?? 'Missing number';
   }
 
   return (
@@ -104,30 +90,67 @@ export default function DocumentsPage() {
       )}
 
       {documentToDelete ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
-          <Card className="w-full max-w-md p-6 shadow-xl">
-            <h2 className="text-xl font-bold text-slate-950">Delete document?</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              This will remove the document from the current workspace. This action cannot be
-              undone.
-            </p>
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-sm font-medium text-slate-500">Document</p>
-              <p className="mt-1 font-semibold text-slate-950">
-                {getDeleteIdentifier(documentToDelete)}
-              </p>
-            </div>
-            <div className="mt-6 flex flex-col justify-end gap-2 sm:flex-row">
-              <Button className="w-full sm:w-auto" onClick={() => setDocumentToDelete(null)} variant="secondary">
-                Cancel
-              </Button>
-              <Button className="w-full sm:w-auto" onClick={confirmDeleteDocument} variant="danger">
-                Delete document
-              </Button>
-            </div>
-          </Card>
-        </div>
+        <DeleteDocumentDialog
+          document={documentToDelete}
+          onCancel={() => setDocumentToDelete(null)}
+          onConfirm={confirmDeleteDocument}
+        />
       ) : null}
+    </div>
+  );
+}
+
+function filterDocuments(
+  documents: Document[],
+  search: string,
+  status: 'ALL' | DocumentStatus,
+): Document[] {
+  const normalizedSearch = search.trim().toLowerCase();
+
+  return documents.filter((document) => {
+    const matchesStatus = status === 'ALL' || document.status === status;
+    const matchesSearch =
+      normalizedSearch.length === 0 ||
+      (document.documentNumber ?? '').toLowerCase().includes(normalizedSearch) ||
+      (document.supplierName ?? '').toLowerCase().includes(normalizedSearch);
+
+    return matchesStatus && matchesSearch;
+  });
+}
+
+function getDeleteIdentifier(document: Document): string {
+  return document.documentNumber ?? document.fileName ?? 'Missing number';
+}
+
+function DeleteDocumentDialog({
+  document,
+  onCancel,
+  onConfirm,
+}: {
+  document: Document;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4">
+      <Card className="w-full max-w-md p-6 shadow-xl">
+        <h2 className="text-xl font-bold text-slate-950">Delete document?</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          This will remove the document from the current workspace. This action cannot be undone.
+        </p>
+        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-sm font-medium text-slate-500">Document</p>
+          <p className="mt-1 font-semibold text-slate-950">{getDeleteIdentifier(document)}</p>
+        </div>
+        <div className="mt-6 flex flex-col justify-end gap-2 sm:flex-row">
+          <Button className="w-full sm:w-auto" onClick={onCancel} variant="secondary">
+            Cancel
+          </Button>
+          <Button className="w-full sm:w-auto" onClick={onConfirm} variant="danger">
+            Delete document
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }

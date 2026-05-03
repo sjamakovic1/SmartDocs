@@ -11,21 +11,21 @@ interface DocumentFormProps {
   onDocumentChange: (document: Document) => void;
 }
 
-const supportedCurrencies = ['EUR', 'BAM', 'USD', 'GBP', 'AED'];
+const SUPPORTED_CURRENCIES = ['EUR', 'BAM', 'USD', 'GBP', 'AED'];
 
 export default function DocumentForm({
   document,
   isReadOnly = false,
   onDocumentChange,
 }: DocumentFormProps) {
-  function updateField(field: keyof Document, value: string | number | null) {
+  function updateField(field: keyof Document, value: string | number | null): void {
     onDocumentChange({
       ...document,
       [field]: value,
     });
   }
 
-  function handleNumberChange(field: keyof Document, event: ChangeEvent<HTMLInputElement>) {
+  function handleNumberChange(field: keyof Document, event: ChangeEvent<HTMLInputElement>): void {
     updateField(field, event.target.value === '' ? null : Number(event.target.value));
   }
 
@@ -81,7 +81,7 @@ export default function DocumentForm({
           onChange={(event) => updateField('currency', event.target.value || null)}
         >
           <option value="">Select currency</option>
-          {supportedCurrencies.map((currency) => (
+          {SUPPORTED_CURRENCIES.map((currency) => (
             <option key={currency} value={currency}>
               {currency}
             </option>

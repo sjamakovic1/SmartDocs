@@ -7,7 +7,7 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
 
 export default function Select({ children, className = '', label, id, ...props }: SelectProps) {
   return (
-    <label className="block">
+    <label className="block" htmlFor={id}>
       {label ? (
         <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
       ) : null}

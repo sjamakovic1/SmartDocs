@@ -9,6 +9,14 @@ interface DocumentFiltersProps {
   onStatusChange: (value: 'ALL' | DocumentStatus) => void;
 }
 
+const STATUS_OPTIONS: Array<{ value: 'ALL' | DocumentStatus; label: string }> = [
+  { value: 'ALL', label: 'All statuses' },
+  { value: 'UPLOADED', label: 'Uploaded' },
+  { value: 'NEEDS_REVIEW', label: 'Needs Review' },
+  { value: 'VALIDATED', label: 'Validated' },
+  { value: 'REJECTED', label: 'Rejected' },
+];
+
 export default function DocumentFilters({
   search,
   status,
@@ -28,11 +36,11 @@ export default function DocumentFilters({
         value={status}
         onChange={(event) => onStatusChange(event.target.value as 'ALL' | DocumentStatus)}
       >
-        <option value="ALL">All statuses</option>
-        <option value="UPLOADED">Uploaded</option>
-        <option value="NEEDS_REVIEW">Needs Review</option>
-        <option value="VALIDATED">Validated</option>
-        <option value="REJECTED">Rejected</option>
+        {STATUS_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
       </Select>
     </div>
   );

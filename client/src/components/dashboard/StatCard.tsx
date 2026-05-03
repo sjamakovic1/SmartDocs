@@ -1,10 +1,10 @@
 import Card from '../common/Card';
 
-interface StatCardProps {
+type StatCardProps = {
   label: string;
   value: string | number;
   helper?: string;
-}
+};
 
 export default function StatCard({ label, value, helper }: StatCardProps) {
   return (

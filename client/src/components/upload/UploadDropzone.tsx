@@ -12,7 +12,7 @@ interface UploadDropzoneProps {
 export default function UploadDropzone({ error, hasFile, onFileSelect }: UploadDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
 
-  function handleChange(event: ChangeEvent<HTMLInputElement>) {
+  function handleChange(event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0];
     if (file) {
       onFileSelect(file);
@@ -20,17 +20,17 @@ export default function UploadDropzone({ error, hasFile, onFileSelect }: UploadD
     event.target.value = '';
   }
 
-  function handleDragOver(event: DragEvent<HTMLLabelElement>) {
+  function handleDragOver(event: DragEvent<HTMLLabelElement>): void {
     event.preventDefault();
     setIsDragging(true);
   }
 
-  function handleDragLeave(event: DragEvent<HTMLLabelElement>) {
+  function handleDragLeave(event: DragEvent<HTMLLabelElement>): void {
     event.preventDefault();
     setIsDragging(false);
   }
 
-  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+  function handleDrop(event: DragEvent<HTMLLabelElement>): void {
     event.preventDefault();
     setIsDragging(false);
 
@@ -42,13 +42,10 @@ export default function UploadDropzone({ error, hasFile, onFileSelect }: UploadD
 
   return (
     <label
-      className={`flex min-w-0 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed px-4 py-8 text-center transition sm:px-6 sm:py-12 ${
-        isDragging
-          ? 'border-indigo-500 bg-indigo-50'
-          : hasFile
-            ? 'border-indigo-300 bg-indigo-50/70'
-            : 'border-indigo-200 bg-indigo-50/40 hover:border-indigo-400 hover:bg-indigo-50'
-      } ${error ? 'border-red-300 bg-red-50' : ''}`}
+      className={`flex min-w-0 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed px-4 py-8 text-center transition sm:px-6 sm:py-12 ${getDropzoneStateClassName(
+        isDragging,
+        hasFile,
+      )} ${error ? 'border-red-300 bg-red-50' : ''}`}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -74,4 +71,16 @@ export default function UploadDropzone({ error, hasFile, onFileSelect }: UploadD
       {error ? <span className="mt-4 text-sm font-medium text-red-700">{error}</span> : null}
     </label>
   );
+}
+
+function getDropzoneStateClassName(isDragging: boolean, hasFile: boolean): string {
+  if (isDragging) {
+    return 'border-indigo-500 bg-indigo-50';
+  }
+
+  if (hasFile) {
+    return 'border-indigo-300 bg-indigo-50/70';
+  }
+
+  return 'border-indigo-200 bg-indigo-50/40 hover:border-indigo-400 hover:bg-indigo-50';
 }
