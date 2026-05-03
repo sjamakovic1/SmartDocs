@@ -117,11 +117,11 @@ export default function DocumentsPage() {
                 {getDeleteIdentifier(documentToDelete)}
               </p>
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button onClick={() => setDocumentToDelete(null)} variant="secondary">
+            <div className="mt-6 flex flex-col justify-end gap-2 sm:flex-row">
+              <Button className="w-full sm:w-auto" onClick={() => setDocumentToDelete(null)} variant="secondary">
                 Cancel
               </Button>
-              <Button onClick={confirmDeleteDocument} variant="danger">
+              <Button className="w-full sm:w-auto" onClick={confirmDeleteDocument} variant="danger">
                 Delete document
               </Button>
             </div>

@@ -9,7 +9,6 @@ import { parseTxtDocument } from '../parsers/txtParser';
 import type { DocumentRecord, LineItem, ValidationIssue } from '../types/document';
 import { detectSupportedUploadFileType, type SupportedUploadFileType } from '../utils/fileType';
 import {
-  getSuggestedStatus,
   hasBlockingValidationIssues,
   validateDocument,
 } from '../validation/documentValidation';
@@ -87,7 +86,7 @@ export async function uploadAndParseDocument(file: UploadedDocumentFile): Promis
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     validationIssues: parserIssues,
-    status: 'NEEDS_REVIEW',
+    status: 'UPLOADED',
     mimeType: file.mimetype,
     fileSize: file.size ?? file.buffer.byteLength,
   };
@@ -96,11 +95,10 @@ export async function uploadAndParseDocument(file: UploadedDocumentFile): Promis
     existingDocuments,
   });
   const combinedIssues = [...parserIssues, ...validationIssues];
-  const status = getSuggestedStatus(documentWithId, combinedIssues);
 
   const createdDocument = await prisma.document.create({
       data: {
-        ...toPrismaDocumentCreateInput(documentWithId, status),
+        ...toPrismaDocumentCreateInput(documentWithId, 'UPLOADED'),
         lineItems: {
           create: toPrismaLineItems(documentWithId.lineItems),
         },
@@ -297,7 +295,7 @@ export async function updateStoredDocument(
     currency:
       payload.currency === undefined ? document.currency : normalizeCurrency(payload.currency),
     lineItems: payload.lineItems ?? document.lineItems,
-    status: 'NEEDS_REVIEW',
+    status: getStatusAfterSave(document.status),
     updatedAt: new Date().toISOString(),
   };
   const existingDocuments = await getDocuments();
@@ -343,7 +341,7 @@ export async function updateStoredDocument(
       },
       data: {
         ...toPrismaDocumentUpdateInput(updatedDocumentDraft),
-        status: 'NEEDS_REVIEW',
+        status: updatedDocumentDraft.status,
       },
       include: documentInclude,
     });
@@ -508,10 +506,16 @@ async function replaceValidationIssues(
 
 function getReviewStatus(document: StoredDocument, validationIssues: ValidationIssue[]) {
   if (hasBlockingValidationIssues(validationIssues)) {
-    return 'NEEDS_REVIEW';
+    return document.status === 'UPLOADED' ? 'UPLOADED' : 'NEEDS_REVIEW';
   }
 
-  return document.status === 'VALIDATED' ? 'VALIDATED' : 'NEEDS_REVIEW';
+  return document.status === 'VALIDATED' || document.status === 'UPLOADED'
+    ? document.status
+    : 'NEEDS_REVIEW';
+}
+
+function getStatusAfterSave(status: NonNullable<DocumentRecord['status']>) {
+  return status === 'VALIDATED' ? 'VALIDATED' : 'NEEDS_REVIEW';
 }
 
 function pickDocumentUpdateFields(payload: DocumentUpdatePayload): DocumentUpdatePayload {

@@ -42,7 +42,7 @@ export default function UploadDropzone({ error, hasFile, onFileSelect }: UploadD
 
   return (
     <label
-      className={`flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition ${
+      className={`flex min-w-0 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed px-4 py-8 text-center transition sm:px-6 sm:py-12 ${
         isDragging
           ? 'border-indigo-500 bg-indigo-50'
           : hasFile
@@ -62,13 +62,13 @@ export default function UploadDropzone({ error, hasFile, onFileSelect }: UploadD
       <span className="flex size-12 items-center justify-center rounded-lg bg-white text-lg font-bold text-indigo-700 shadow-sm ring-1 ring-indigo-100">
         +
       </span>
-      <span className="mt-4 text-base font-semibold text-slate-950">
+      <span className="mt-4 max-w-[16rem] break-words text-base font-semibold text-slate-950 sm:max-w-xs">
         Drop your document here, or click to browse
       </span>
-      <span className="mt-2 text-sm text-slate-600">
+      <span className="mt-2 max-w-[16rem] break-words text-sm text-slate-600 sm:max-w-xs">
         Supported formats: {getSupportedFormatsLabel()}
       </span>
-      <span className="mt-3 text-xs text-slate-500">
+      <span className="mt-3 max-w-[16rem] break-words text-xs text-slate-500 sm:max-w-xs">
         The original file will be stored and extracted data will be available for review.
       </span>
       {error ? <span className="mt-4 text-sm font-medium text-red-700">{error}</span> : null}

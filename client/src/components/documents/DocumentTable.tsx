@@ -16,7 +16,65 @@ interface DocumentTableProps {
 export default function DocumentTable({ documents, onDeleteDocument }: DocumentTableProps) {
   return (
     <Card className="overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="divide-y divide-slate-100 md:hidden">
+        {documents.map((document) => (
+          <div className="space-y-3 bg-white p-4" key={document.id}>
+            <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between">
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-950">
+                  {document.documentNumber ?? 'Missing'}
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  {formatDocumentType(document.documentType)}
+                </p>
+              </div>
+              <StatusBadge status={document.status} />
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="font-medium text-slate-500">Supplier</p>
+                <p className="mt-1 break-words text-slate-800">{document.supplierName ?? '-'}</p>
+              </div>
+              <div>
+                <p className="font-medium text-slate-500">Total</p>
+                <p className="mt-1 font-semibold text-slate-800">
+                  {formatCurrency(document.total, document.currency)}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-slate-500">Issues</p>
+                <p className="mt-1 text-slate-800">
+                  {document.validationIssues.filter((issue) => !issue.resolved).length}
+                </p>
+              </div>
+              <div>
+                <p className="font-medium text-slate-500">Created</p>
+                <p className="mt-1 text-slate-800">{formatDate(document.createdAt)}</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Link className="w-full sm:w-auto" to={`/documents/${document.id}`}>
+                <Button className="w-full sm:w-auto" variant="secondary">
+                  Review
+                </Button>
+              </Link>
+              <Button
+                className="w-full text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
+                onClick={() => onDeleteDocument(document)}
+                variant="ghost"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        ))}
+        {documents.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-slate-500">
+            No documents match the current filters.
+          </div>
+        ) : null}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[980px] border-collapse text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>

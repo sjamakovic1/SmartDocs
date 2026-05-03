@@ -57,10 +57,10 @@ export default function UploadPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <Card className="space-y-6 p-6">
+      <Card className="space-y-6 p-4 sm:p-6">
         <div>
           <h2 className="text-xl font-bold text-slate-950">Upload document</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 max-w-[18rem] break-words text-sm text-slate-500 sm:max-w-none">
             Upload a PDF, CSV, TXT, PNG, JPG, or JPEG file for extraction and validation.
           </p>
         </div>
@@ -74,7 +74,7 @@ export default function UploadPage() {
         <FilePreview file={selectedFile} onRemoveFile={removeSelectedFile} />
 
         <div className="flex justify-end">
-          <Button disabled={isUploading} onClick={handleUpload}>
+          <Button className="w-full sm:w-auto" disabled={isUploading} onClick={handleUpload}>
             {isUploading ? 'Processing...' : 'Process document'}
           </Button>
         </div>

@@ -209,7 +209,7 @@ export default function DocumentDetailsPage() {
             Back to documents
           </Link>
           <div className="mt-2 flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-bold text-slate-950">
+            <h2 className="min-w-0 break-words text-2xl font-bold text-slate-950">
               {document.documentNumber ?? 'Untitled document'}
             </h2>
             <StatusBadge status={document.status} />
@@ -223,20 +223,20 @@ export default function DocumentDetailsPage() {
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap xl:justify-end">
           {isRejected ? (
-            <Button disabled={isProcessing} onClick={reopenDocument}>
+            <Button className="w-full sm:w-auto" disabled={isProcessing} onClick={reopenDocument}>
               {isProcessing ? 'Reopening...' : 'Reopen for review'}
             </Button>
           ) : (
             <>
-              <Button disabled={isSaving} onClick={saveDocument} variant="secondary">
+              <Button className="w-full sm:w-auto" disabled={isSaving} onClick={saveDocument} variant="secondary">
                 {isSaving ? 'Saving...' : 'Save changes'}
               </Button>
-              <Button disabled={!canConfirm || isProcessing || isSaving} onClick={confirmDocument}>
+              <Button className="w-full sm:w-auto" disabled={!canConfirm || isProcessing || isSaving} onClick={confirmDocument}>
                 Confirm as Validated
               </Button>
-              <Button disabled={isProcessing || isSaving} onClick={() => setIsRejectDialogOpen(true)} variant="danger">
+              <Button className="w-full sm:w-auto" disabled={isProcessing || isSaving} onClick={() => setIsRejectDialogOpen(true)} variant="danger">
                 Reject document
               </Button>
             </>
@@ -282,11 +282,11 @@ export default function DocumentDetailsPage() {
                 ) : null}
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={() => setIsRejectDialogOpen(false)} variant="secondary">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button className="w-full sm:w-auto" onClick={() => setIsRejectDialogOpen(false)} variant="secondary">
                 Cancel
               </Button>
-              <Button disabled={!finalRejectReason || isProcessing} onClick={rejectDocument} variant="danger">
+              <Button className="w-full sm:w-auto" disabled={!finalRejectReason || isProcessing} onClick={rejectDocument} variant="danger">
                 {isProcessing ? 'Rejecting...' : 'Confirm reject'}
               </Button>
             </div>
