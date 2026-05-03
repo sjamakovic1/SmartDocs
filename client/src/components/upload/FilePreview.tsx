@@ -50,7 +50,7 @@ export default function FilePreview({ file, onRemoveFile }: FilePreviewProps) {
             </p>
           </div>
         </div>
-        <Button onClick={onRemoveFile} type="button" variant="ghost">
+        <Button className="w-full md:w-auto" onClick={onRemoveFile} type="button" variant="ghost">
           Remove file
         </Button>
       </div>

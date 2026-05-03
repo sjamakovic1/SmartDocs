@@ -20,7 +20,38 @@ export default function RecentDocuments({ documents }: { documents: Document[] }
         </Link>
       </div>
       <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
-        <div className="overflow-x-auto">
+        <div className="divide-y divide-slate-100 md:hidden">
+          {recentDocuments.map((document) => (
+            <div className="space-y-3 bg-white p-4" key={document.id}>
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between">
+                <Link
+                  className="min-w-0 truncate font-semibold text-slate-950 hover:underline"
+                  to={`/documents/${document.id}`}
+                >
+                  {document.documentNumber ?? 'Missing number'}
+                </Link>
+                <StatusBadge status={document.status} />
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm text-slate-600">
+                <div>
+                  <p className="font-medium text-slate-500">Supplier</p>
+                  <p className="mt-1 break-words">{document.supplierName ?? '-'}</p>
+                </div>
+                <div>
+                  <p className="font-medium text-slate-500">Total</p>
+                  <p className="mt-1 font-semibold text-slate-800">
+                    {formatCurrency(document.total, document.currency)}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="font-medium text-slate-500">Created</p>
+                  <p className="mt-1">{formatDate(document.createdAt)}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[680px] border-collapse text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>

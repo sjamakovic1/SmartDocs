@@ -33,8 +33,12 @@ export default function Header() {
     <header className="border-b border-slate-200 bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-7xl">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-950">{copy.title}</h1>
-          <p className="mt-1 text-sm text-slate-500">{copy.subtitle}</p>
+          <h1 className="break-words text-2xl font-bold tracking-tight text-slate-950">
+            {copy.title}
+          </h1>
+          <p className="mt-1 max-w-[18rem] break-words text-sm text-slate-500 sm:max-w-none">
+            {copy.subtitle}
+          </p>
         </div>
       </div>
     </header>
