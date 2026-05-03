@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractLineItems } from './extractLineItems';
+import { extractLineItems } from '../../../src/extraction/extractLineItems';
 
 describe('extractLineItems', () => {
   it('extracts generated invoice rows', () => {

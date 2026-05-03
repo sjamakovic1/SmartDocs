@@ -11,7 +11,6 @@ import {
   rejectStoredDocument,
   RejectedDocumentUpdateError,
   reopenStoredDocument,
-  StorageSignedUrlError,
   StorageUploadError,
   UnsupportedFileTypeError,
   updateStoredDocument,
@@ -60,15 +59,15 @@ export async function listDocuments(_req: Request, res: Response) {
 }
 
 export async function getDocument(req: Request, res: Response) {
-  const id = getParam(req, 'id');
+  const id = getRequiredDocumentId(req, res);
   if (!id) {
-    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return;
   }
 
   const document = await getDocumentById(id);
 
   if (!document) {
-    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+    return sendDocumentNotFound(res);
   }
 
   return res.json({
@@ -77,9 +76,9 @@ export async function getDocument(req: Request, res: Response) {
 }
 
 export async function getDocumentFileUrl(req: Request, res: Response) {
-  const id = getParam(req, 'id');
+  const id = getRequiredDocumentId(req, res);
   if (!id) {
-    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return;
   }
 
   try {
@@ -95,16 +94,7 @@ export async function getDocumentFileUrl(req: Request, res: Response) {
     }
 
     return res.json(signedUrl);
-  } catch (error) {
-    if (error instanceof StorageSignedUrlError) {
-      return sendApiError(
-        res,
-        500,
-        'SIGNED_URL_FAILED',
-        'Failed to generate original file access link.',
-      );
-    }
-
+  } catch {
     return sendApiError(
       res,
       500,
@@ -115,15 +105,15 @@ export async function getDocumentFileUrl(req: Request, res: Response) {
 }
 
 export async function removeDocument(req: Request, res: Response) {
-  const id = getParam(req, 'id');
+  const id = getRequiredDocumentId(req, res);
   if (!id) {
-    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return;
   }
 
   const wasDeleted = await deleteDocument(id);
 
   if (!wasDeleted) {
-    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+    return sendDocumentNotFound(res);
   }
 
   return res.json({
@@ -132,15 +122,15 @@ export async function removeDocument(req: Request, res: Response) {
 }
 
 export async function validateDocument(req: Request, res: Response) {
-  const id = getParam(req, 'id');
+  const id = getRequiredDocumentId(req, res);
   if (!id) {
-    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return;
   }
 
   const document = await validateStoredDocument(id);
 
   if (!document) {
-    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+    return sendDocumentNotFound(res);
   }
 
   return res.json({
@@ -149,16 +139,16 @@ export async function validateDocument(req: Request, res: Response) {
 }
 
 export async function updateDocument(req: Request, res: Response) {
-  const id = getParam(req, 'id');
+  const id = getRequiredDocumentId(req, res);
   if (!id) {
-    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return;
   }
 
   try {
     const document = await updateStoredDocument(id, req.body);
 
     if (!document) {
-      return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+      return sendDocumentNotFound(res);
     }
 
     return res.json({
@@ -179,16 +169,16 @@ export async function updateDocument(req: Request, res: Response) {
 }
 
 export async function confirmDocument(req: Request, res: Response) {
-  const id = getParam(req, 'id');
+  const id = getRequiredDocumentId(req, res);
   if (!id) {
-    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return;
   }
 
   try {
     const document = await confirmStoredDocument(id);
 
     if (!document) {
-      return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+      return sendDocumentNotFound(res);
     }
 
     return res.json({
@@ -220,12 +210,12 @@ export async function confirmDocument(req: Request, res: Response) {
 }
 
 export async function rejectDocument(req: Request, res: Response) {
-  const id = getParam(req, 'id');
+  const id = getRequiredDocumentId(req, res);
   if (!id) {
-    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return;
   }
 
-  const rejectReason = typeof req.body?.rejectReason === 'string' ? req.body.rejectReason.trim() : '';
+  const rejectReason = getRejectReason(req);
   if (!rejectReason) {
     return sendApiError(res, 400, 'REJECT_REASON_REQUIRED', 'Rejection reason is required.');
   }
@@ -233,7 +223,7 @@ export async function rejectDocument(req: Request, res: Response) {
   const document = await rejectStoredDocument(id, rejectReason);
 
   if (!document) {
-    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+    return sendDocumentNotFound(res);
   }
 
   return res.json({
@@ -242,15 +232,15 @@ export async function rejectDocument(req: Request, res: Response) {
 }
 
 export async function reopenDocument(req: Request, res: Response) {
-  const id = getParam(req, 'id');
+  const id = getRequiredDocumentId(req, res);
   if (!id) {
-    return sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return;
   }
 
   const document = await reopenStoredDocument(id);
 
   if (!document) {
-    return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+    return sendDocumentNotFound(res);
   }
 
   return res.json({
@@ -261,4 +251,23 @@ export async function reopenDocument(req: Request, res: Response) {
 function getParam(req: Request, name: string) {
   const value = req.params[name];
   return Array.isArray(value) ? value[0] : value;
+}
+
+function getRequiredDocumentId(req: Request, res: Response) {
+  const id = getParam(req, 'id');
+
+  if (!id) {
+    sendApiError(res, 400, 'DOCUMENT_ID_REQUIRED', 'Document id is required.');
+    return undefined;
+  }
+
+  return id;
+}
+
+function sendDocumentNotFound(res: Response) {
+  return sendApiError(res, 404, 'DOCUMENT_NOT_FOUND', 'Document not found.');
+}
+
+function getRejectReason(req: Request) {
+  return typeof req.body?.rejectReason === 'string' ? req.body.rejectReason.trim() : '';
 }

@@ -1,4 +1,4 @@
-import { parseImageOcrText } from '../parsers/imageParser';
+import { parseImageOcrText } from '../src/parsers/imageParser';
 
 const sampleOcrText = `
 Description Quantity Unit Price VAT Amount

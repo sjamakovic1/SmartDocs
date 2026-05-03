@@ -3,7 +3,7 @@ import { createEmptyParsedDocument, parseNumber, type ParsedDocument } from './p
 
 type LineItemColumn = 'description' | 'quantity' | 'unitPrice' | 'lineTotal';
 
-const columnAliases: Record<LineItemColumn, string[]> = {
+const COLUMN_ALIASES: Record<LineItemColumn, string[]> = {
   description: ['desc', 'description', 'item', 'name'],
   quantity: ['qty', 'quantity'],
   unitPrice: ['price', 'unitprice', 'unit_price', 'unit price'],
@@ -43,12 +43,12 @@ function createLineItem(
   };
 }
 
-function resolveColumnIndexes(headers: string[]) {
+function resolveColumnIndexes(headers: string[]): Partial<Record<LineItemColumn, number>> {
   const normalizedHeaders = headers.map(normalizeHeader);
   const indexes: Partial<Record<LineItemColumn, number>> = {};
 
-  (Object.keys(columnAliases) as LineItemColumn[]).forEach((column) => {
-    const aliases = columnAliases[column].map(normalizeHeader);
+  (Object.keys(COLUMN_ALIASES) as LineItemColumn[]).forEach((column) => {
+    const aliases = COLUMN_ALIASES[column].map(normalizeHeader);
     const index = normalizedHeaders.findIndex((header) => aliases.includes(header));
 
     if (index >= 0) {
@@ -59,22 +59,22 @@ function resolveColumnIndexes(headers: string[]) {
   return indexes;
 }
 
-function normalizeHeader(value: string) {
+function normalizeHeader(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function getCell(row: string[], index: number | undefined) {
+function getCell(row: string[], index: number | undefined): string | undefined {
   return index === undefined ? undefined : row[index]?.trim();
 }
 
-function parseCsvRows(rawText: string) {
+function parseCsvRows(rawText: string): string[][] {
   return rawText
     .split(/\r?\n/)
     .filter((line) => line.trim() !== '')
     .map(parseCsvLine);
 }
 
-function parseCsvLine(line: string) {
+function parseCsvLine(line: string): string[] {
   const cells: string[] = [];
   let currentCell = '';
   let isInsideQuotes = false;

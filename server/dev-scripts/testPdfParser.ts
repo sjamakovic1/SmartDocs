@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { parsePdfDocument } from '../parsers/pdfParser';
-import { validateDocument } from '../validation/documentValidation';
+import { parsePdfDocument } from '../src/parsers/pdfParser';
+import { validateDocument } from '../src/validation/documentValidation';
 
 const samplePath = process.argv[2];
 

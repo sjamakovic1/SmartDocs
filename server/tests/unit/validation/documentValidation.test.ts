@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import type { DocumentRecord, ValidationIssue } from '../types/document';
-import { hasBlockingValidationIssues, validateDocument } from './documentValidation';
+import type { DocumentRecord, ValidationIssue } from '../../../src/types/document';
+import { hasBlockingValidationIssues, validateDocument } from '../../../src/validation/documentValidation';
 
 function validInvoice(overrides: Partial<DocumentRecord> = {}): DocumentRecord {
   return {

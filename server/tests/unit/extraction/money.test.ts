@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseLocalizedNumber, parseMoney } from './money';
+import { parseLocalizedNumber, parseMoney } from '../../../src/extraction/money';
 
 describe('parseMoney', () => {
   it.each([

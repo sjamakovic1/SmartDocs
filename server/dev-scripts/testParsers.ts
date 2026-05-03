@@ -1,6 +1,6 @@
-import { parseCsvDocument } from '../parsers/csvParser';
-import { parseTxtDocument } from '../parsers/txtParser';
-import { validateDocument } from '../validation/documentValidation';
+import { parseCsvDocument } from '../src/parsers/csvParser';
+import { parseTxtDocument } from '../src/parsers/txtParser';
+import { validateDocument } from '../src/validation/documentValidation';
 
 const txtExamples = [
   `Invoice TXT-0

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectSupportedUploadFileType } from './fileType';
+import { detectSupportedUploadFileType } from '../../../src/utils/fileType';
 
 describe('detectSupportedUploadFileType', () => {
   it.each([

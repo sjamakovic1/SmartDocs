@@ -9,6 +9,16 @@ import { createEmptyParsedDocument, type ParsedDocument } from './parserTypes';
 const LOW_CONFIDENCE_THRESHOLD = 60;
 const MIN_IMAGE_WIDTH = 800;
 const MIN_IMAGE_HEIGHT = 600;
+const IMAGE_PURCHASE_ORDER_REGEX = /\bpurchase\s+order\b|\bpo\s*(?:number|#|no\.?)\b/i;
+const IMAGE_INVOICE_REGEX = /\binvoice\b|\bfacture(?:\s+proforma)?\b/i;
+const FALLBACK_DOCUMENT_NUMBER_REGEX =
+  /\binvoice\s*(?:#|no\.?|number)?\s*:?\s*#?\s*([A-Z0-9-]+)/i;
+const FALLBACK_SUPPLIER_REGEX = /\b(?:supplier|company)\s*:\s*(.+?)(?:\n|$)/i;
+const FALLBACK_SUPPLIER_WITHOUT_COLON_REGEX = /\bsupplier\s+((?!details\b).+?)(?:\n|$)/i;
+const BUSINESS_DOCUMENT_REGEX =
+  /\b(invoice|tax\s+invoice|facture|purchase\s+order|po\s+number|supplier|total|amount|tax|vat|tva|subtotal)\b/i;
+const MULTIPLE_DOCUMENTS_REGEX =
+  /\b(invoice\s+(?:number|no\.?)|tax\s+invoice|invoice\s+date|purchase\s+order)\b/gi;
 
 export async function parseImageDocument(
   buffer: Buffer,
@@ -20,58 +30,15 @@ export async function parseImageDocument(
   const imageHeight = metadata.height ?? null;
   const warnings: ValidationIssue[] = [];
 
-  if (
-    imageWidth !== null &&
-    imageHeight !== null &&
-    (imageWidth < MIN_IMAGE_WIDTH || imageHeight < MIN_IMAGE_HEIGHT)
-  ) {
-    warnings.push(
-      makeOcrIssue(
-        'image',
-        'IMAGE_LOW_RESOLUTION',
-        'Image resolution is low and may affect OCR accuracy.',
-        'WARNING',
-      ),
-    );
-  }
+  addLowResolutionWarning(warnings, imageWidth, imageHeight);
 
-  const processedImage = await sharp(buffer)
-    .grayscale()
-    .normalize()
-    .sharpen()
-    .png()
-    .toBuffer();
-
+  const processedImage = await preprocessImageForOcr(buffer);
   const ocrResult = await Tesseract.recognize(processedImage, 'eng');
   const rawText = ocrResult.data.text;
   const { normalizedText, warnings: normalizationWarnings } = normalizeOcrText(rawText);
-  const ocrConfidence = Number.isFinite(ocrResult.data.confidence)
-    ? ocrResult.data.confidence
-    : null;
+  const ocrConfidence = getOcrConfidence(ocrResult.data.confidence);
 
-  if (ocrConfidence !== null && ocrConfidence < LOW_CONFIDENCE_THRESHOLD) {
-    warnings.push(
-      makeOcrIssue(
-        'ocr',
-        'OCR_LOW_CONFIDENCE',
-        'OCR confidence is low. Please review the extracted text manually.',
-        'WARNING',
-        LOW_CONFIDENCE_THRESHOLD,
-        ocrConfidence,
-      ),
-    );
-  }
-
-  if (rawText.replace(/\s/g, '').length < 20) {
-    warnings.push(
-      makeOcrIssue(
-        'ocr',
-        'OCR_NO_TEXT_DETECTED',
-        'No readable text was detected in the image.',
-        'ERROR',
-      ),
-    );
-  }
+  addOcrQualityWarnings(warnings, rawText, ocrConfidence);
 
   const documentType = detectImageDocumentType(normalizedText);
   const document = createEmptyParsedDocument(rawText, fileName, documentType);
@@ -103,7 +70,71 @@ export function parseImageOcrText(rawText: string, fileName?: string): ParsedDoc
   return document;
 }
 
-function applyImageTextWarnings(document: ParsedDocument, normalizedText: string) {
+async function preprocessImageForOcr(buffer: Buffer): Promise<Buffer> {
+  return sharp(buffer)
+    .grayscale()
+    .normalize()
+    .sharpen()
+    .png()
+    .toBuffer();
+}
+
+function addLowResolutionWarning(
+  warnings: ValidationIssue[],
+  imageWidth: number | null,
+  imageHeight: number | null,
+): void {
+  if (
+    imageWidth !== null &&
+    imageHeight !== null &&
+    (imageWidth < MIN_IMAGE_WIDTH || imageHeight < MIN_IMAGE_HEIGHT)
+  ) {
+    warnings.push(
+      makeOcrIssue(
+        'image',
+        'IMAGE_LOW_RESOLUTION',
+        'Image resolution is low and may affect OCR accuracy.',
+        'WARNING',
+      ),
+    );
+  }
+}
+
+function getOcrConfidence(confidence: number): number | null {
+  return Number.isFinite(confidence) ? confidence : null;
+}
+
+function addOcrQualityWarnings(
+  warnings: ValidationIssue[],
+  rawText: string,
+  ocrConfidence: number | null,
+): void {
+  if (ocrConfidence !== null && ocrConfidence < LOW_CONFIDENCE_THRESHOLD) {
+    warnings.push(
+      makeOcrIssue(
+        'ocr',
+        'OCR_LOW_CONFIDENCE',
+        'OCR confidence is low. Please review the extracted text manually.',
+        'WARNING',
+        LOW_CONFIDENCE_THRESHOLD,
+        ocrConfidence,
+      ),
+    );
+  }
+
+  if (rawText.replace(/\s/g, '').length < 20) {
+    warnings.push(
+      makeOcrIssue(
+        'ocr',
+        'OCR_NO_TEXT_DETECTED',
+        'No readable text was detected in the image.',
+        'ERROR',
+      ),
+    );
+  }
+}
+
+function applyImageTextWarnings(document: ParsedDocument, normalizedText: string): void {
   if (looksLikeDashboardInsteadOfDocument(normalizedText)) {
     document.documentType = 'UNKNOWN';
     clearExtractedFields(document);
@@ -144,7 +175,7 @@ function applyImageTextWarnings(document: ParsedDocument, normalizedText: string
   }
 }
 
-function clearExtractedFields(document: ParsedDocument) {
+function clearExtractedFields(document: ParsedDocument): void {
   document.documentNumber = null;
   document.supplierName = null;
   document.issueDate = null;
@@ -157,37 +188,35 @@ function clearExtractedFields(document: ParsedDocument) {
   document.lineItems = [];
 }
 
-function hasIssue(document: ParsedDocument, code: ValidationIssue['code']) {
+function hasIssue(document: ParsedDocument, code: ValidationIssue['code']): boolean {
   return document.validationIssues?.some((issue) => issue.code === code) ?? false;
 }
 
 function detectImageDocumentType(rawText: string): DocumentType {
-  if (/\bpurchase\s+order\b|\bpo\s*(?:number|#|no\.?)\b/i.test(rawText)) {
+  if (IMAGE_PURCHASE_ORDER_REGEX.test(rawText)) {
     return 'PURCHASE_ORDER';
   }
 
-  if (/\binvoice\b|\bfacture(?:\s+proforma)?\b/i.test(rawText)) {
+  if (IMAGE_INVOICE_REGEX.test(rawText)) {
     return 'INVOICE';
   }
 
   return 'UNKNOWN';
 }
 
-function extractDocumentNumber(rawText: string) {
-  const match = rawText.match(
-    /\binvoice\s*(?:#|no\.?|number)?\s*:?\s*#?\s*([A-Z0-9-]+)/i,
-  );
+function extractDocumentNumber(rawText: string): string | null {
+  const match = rawText.match(FALLBACK_DOCUMENT_NUMBER_REGEX);
 
   return match?.[1]?.trim() ?? null;
 }
 
-function extractSupplierName(rawText: string) {
-  const match = rawText.match(/\b(?:supplier|company)\s*:\s*(.+?)(?:\n|$)/i)
-    ?? rawText.match(/\bsupplier\s+((?!details\b).+?)(?:\n|$)/i);
+function extractSupplierName(rawText: string): string | null {
+  const match = rawText.match(FALLBACK_SUPPLIER_REGEX)
+    ?? rawText.match(FALLBACK_SUPPLIER_WITHOUT_COLON_REGEX);
   return match?.[1]?.trim() ?? null;
 }
 
-function applyExtractedOcrFields(document: ParsedDocument, rawText: string) {
+function applyExtractedOcrFields(document: ParsedDocument, rawText: string): ValidationIssue[] {
   const commonFields = extractCommonFields(rawText);
 
   document.documentNumber = commonFields.documentNumber ?? extractDocumentNumber(rawText);
@@ -204,11 +233,11 @@ function applyExtractedOcrFields(document: ParsedDocument, rawText: string) {
   return commonFields.warnings;
 }
 
-function looksLikeBusinessDocument(rawText: string) {
-  return /\b(invoice|tax\s+invoice|facture|purchase\s+order|po\s+number|supplier|total|amount|tax|vat|tva|subtotal)\b/i.test(rawText);
+function looksLikeBusinessDocument(rawText: string): boolean {
+  return BUSINESS_DOCUMENT_REGEX.test(rawText);
 }
 
-function looksLikeDashboardInsteadOfDocument(rawText: string) {
+function looksLikeDashboardInsteadOfDocument(rawText: string): boolean {
   const dashboardTerms = [
     /\bdashboard\b/i,
     /\bcustomers\b/i,
@@ -225,12 +254,12 @@ function looksLikeDashboardInsteadOfDocument(rawText: string) {
   return dashboardHits >= 4 && !looksLikeBusinessDocument(rawText);
 }
 
-function looksLikeMultipleDocuments(rawText: string) {
-  const matches = rawText.match(/\b(invoice\s+(?:number|no\.?)|tax\s+invoice|invoice\s+date|purchase\s+order)\b/gi) ?? [];
+function looksLikeMultipleDocuments(rawText: string): boolean {
+  const matches = rawText.match(MULTIPLE_DOCUMENTS_REGEX) ?? [];
   return matches.length >= 3 && new Set(matches.map((match) => match.toLowerCase())).size >= 2;
 }
 
-function addLimitedExtractionWarning(document: ParsedDocument) {
+function addLimitedExtractionWarning(document: ParsedDocument): void {
   const hasIdentityField = Boolean(document.documentNumber || document.supplierName);
   const hasFinancialField = Boolean(
     document.total !== null ||

@@ -8,6 +8,34 @@ import type {
 const DEFAULT_MONEY_TOLERANCE = 0.01;
 export const SUPPORTED_CURRENCIES = ['EUR', 'BAM', 'USD', 'GBP', 'AED'] as const;
 
+type RequiredField = {
+  field: keyof Pick<
+    DocumentRecord,
+    | 'documentNumber'
+    | 'supplierName'
+    | 'issueDate'
+    | 'dueDate'
+    | 'subtotal'
+    | 'taxRate'
+    | 'tax'
+    | 'total'
+  >;
+  message: string;
+};
+
+const REQUIRED_FIELDS: RequiredField[] = [
+  { field: 'documentNumber', message: 'Document number is required.' },
+  { field: 'supplierName', message: 'Supplier/company name is required.' },
+  { field: 'issueDate', message: 'Issue date is required.' },
+  { field: 'dueDate', message: 'Due date is required.' },
+  { field: 'subtotal', message: 'Subtotal is required.' },
+  { field: 'taxRate', message: 'Tax rate is required.' },
+  { field: 'tax', message: 'Tax amount is required.' },
+  { field: 'total', message: 'Total is required.' },
+];
+const REQUIRED_FIELDS_BEFORE_CURRENCY = REQUIRED_FIELDS.slice(0, 4);
+const REQUIRED_FIELDS_AFTER_CURRENCY = REQUIRED_FIELDS.slice(4);
+
 export interface DocumentValidationOptions {
   existingDocuments?: DocumentRecord[];
   moneyTolerance?: number;
@@ -24,15 +52,9 @@ export function validateDocument(
   const moneyTolerance = options.moneyTolerance ?? DEFAULT_MONEY_TOLERANCE;
   const issues: ValidationIssue[] = [];
 
-  addRequiredIssue(issues, 'documentNumber', document.documentNumber, 'Document number is required.');
-  addRequiredIssue(issues, 'supplierName', document.supplierName, 'Supplier/company name is required.');
-  addRequiredIssue(issues, 'issueDate', document.issueDate, 'Issue date is required.');
-  addRequiredIssue(issues, 'dueDate', document.dueDate, 'Due date is required.');
+  addRequiredIssues(document, issues, REQUIRED_FIELDS_BEFORE_CURRENCY);
   validateCurrency(document, issues);
-  addRequiredIssue(issues, 'subtotal', document.subtotal, 'Subtotal is required.');
-  addRequiredIssue(issues, 'taxRate', document.taxRate, 'Tax rate is required.');
-  addRequiredIssue(issues, 'tax', document.tax, 'Tax amount is required.');
-  addRequiredIssue(issues, 'total', document.total, 'Total is required.');
+  addRequiredIssues(document, issues, REQUIRED_FIELDS_AFTER_CURRENCY);
 
   validateDates(document, issues);
   validateDuplicateDocumentNumber(document, options.existingDocuments ?? [], issues);
@@ -44,11 +66,14 @@ export function validateDocument(
   return issues;
 }
 
-export function hasBlockingValidationIssues(issues: ValidationIssue[]) {
+export function hasBlockingValidationIssues(issues: ValidationIssue[]): boolean {
   return issues.some((issue) => issue.severity === 'ERROR' || issue.severity === 'WARNING');
 }
 
-export function getSuggestedStatus(document: DocumentRecord, issues: ValidationIssue[]) {
+export function getSuggestedStatus(
+  document: DocumentRecord,
+  issues: ValidationIssue[],
+): NonNullable<DocumentRecord['status']> {
   if (document.status === 'REJECTED') {
     return 'REJECTED';
   }
@@ -56,7 +81,7 @@ export function getSuggestedStatus(document: DocumentRecord, issues: ValidationI
   return hasBlockingValidationIssues(issues) ? 'NEEDS_REVIEW' : 'VALIDATED';
 }
 
-function validateCurrency(document: DocumentRecord, issues: ValidationIssue[]) {
+function validateCurrency(document: DocumentRecord, issues: ValidationIssue[]): void {
   if (!document.currency) {
     issues.push(makeIssue('currency', 'MISSING_FIELD', 'Currency is required.', 'ERROR'));
     return;
@@ -76,14 +101,17 @@ function validateCurrency(document: DocumentRecord, issues: ValidationIssue[]) {
   }
 }
 
-function validateDates(document: DocumentRecord, issues: ValidationIssue[]) {
-  if (document.issueDate && Number.isNaN(Date.parse(document.issueDate))) {
+function validateDates(document: DocumentRecord, issues: ValidationIssue[]): void {
+  const issueDateTimestamp = document.issueDate ? Date.parse(document.issueDate) : null;
+  const dueDateTimestamp = document.dueDate ? Date.parse(document.dueDate) : null;
+
+  if (document.issueDate && Number.isNaN(issueDateTimestamp)) {
     issues.push(
       makeIssue('issueDate', 'INVALID_DATE', 'Issue date is not a valid date.', 'ERROR', null, document.issueDate),
     );
   }
 
-  if (document.dueDate && Number.isNaN(Date.parse(document.dueDate))) {
+  if (document.dueDate && Number.isNaN(dueDateTimestamp)) {
     issues.push(
       makeIssue('dueDate', 'INVALID_DATE', 'Due date is not a valid date.', 'ERROR', null, document.dueDate),
     );
@@ -92,8 +120,8 @@ function validateDates(document: DocumentRecord, issues: ValidationIssue[]) {
   if (
     document.issueDate &&
     document.dueDate &&
-    !Number.isNaN(Date.parse(document.issueDate)) &&
-    !Number.isNaN(Date.parse(document.dueDate)) &&
+    !Number.isNaN(issueDateTimestamp) &&
+    !Number.isNaN(dueDateTimestamp) &&
     new Date(document.dueDate) < new Date(document.issueDate)
   ) {
     issues.push(
@@ -113,7 +141,7 @@ function validateDuplicateDocumentNumber(
   document: DocumentRecord,
   existingDocuments: DocumentRecord[],
   issues: ValidationIssue[],
-) {
+): void {
   if (!document.documentNumber) {
     return;
   }
@@ -142,7 +170,7 @@ function validateLineItems(
   document: DocumentRecord,
   issues: ValidationIssue[],
   moneyTolerance: number,
-) {
+): void {
   if (document.lineItems.length === 0) {
     issues.push(
       makeIssue('lineItems', 'MISSING_FIELD', 'At least one line item is required.', 'WARNING'),
@@ -172,7 +200,7 @@ function validateSubtotal(
   document: DocumentRecord,
   issues: ValidationIssue[],
   moneyTolerance: number,
-) {
+): void {
   if (!isPresentNumber(document.subtotal) || document.lineItems.length === 0) {
     return;
   }
@@ -200,7 +228,7 @@ function validateTax(
   document: DocumentRecord,
   issues: ValidationIssue[],
   moneyTolerance: number,
-) {
+): void {
   if (
     !isPresentNumber(document.subtotal) ||
     !isPresentNumber(document.taxRate) ||
@@ -229,7 +257,7 @@ function validateTotal(
   document: DocumentRecord,
   issues: ValidationIssue[],
   moneyTolerance: number,
-) {
+): void {
   if (
     !isPresentNumber(document.subtotal) ||
     !isPresentNumber(document.tax) ||
@@ -254,12 +282,22 @@ function validateTotal(
   }
 }
 
+function addRequiredIssues(
+  document: DocumentRecord,
+  issues: ValidationIssue[],
+  requiredFields: RequiredField[],
+): void {
+  requiredFields.forEach(({ field, message }) => {
+    addRequiredIssue(issues, field, document[field], message);
+  });
+}
+
 function addRequiredIssue(
   issues: ValidationIssue[],
   field: string,
   value: string | number | null | undefined,
   message: string,
-) {
+): void {
   if (value === null || value === undefined || value === '') {
     issues.push(makeIssue(field, 'MISSING_FIELD', message, 'WARNING'));
   }
@@ -283,7 +321,7 @@ function makeIssue(
   };
 }
 
-function moneyEquals(left: number, right: number, tolerance: number) {
+function moneyEquals(left: number, right: number, tolerance: number): boolean {
   return Math.abs(left - right) <= tolerance;
 }
 
@@ -291,6 +329,6 @@ function isPresentNumber(value: number | null | undefined): value is number {
   return value !== null && value !== undefined && Number.isFinite(value);
 }
 
-function formatMoney(value: number) {
+function formatMoney(value: number): string {
   return value.toFixed(2);
 }

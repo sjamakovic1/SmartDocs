@@ -1,5 +1,5 @@
-import { normalizeOcrText } from '../extraction/normalizeOcrText';
-import { parseImageOcrText } from '../parsers/imageParser';
+import { normalizeOcrText } from '../src/extraction/normalizeOcrText';
+import { parseImageOcrText } from '../src/parsers/imageParser';
 
 const samples = [
   {

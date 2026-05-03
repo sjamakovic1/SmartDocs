@@ -2,6 +2,13 @@ import { extractCommonFields } from '../extraction/extractCommonFields';
 import type { DocumentType } from '../types/document';
 import { createEmptyParsedDocument, type ParsedDocument } from './parserTypes';
 
+const TXT_PURCHASE_ORDER_REGEX = /\bpurchase\s+order\b/;
+const TXT_PO_NUMBER_REGEX = /\bpo[-\s]?\d+\b/;
+const TXT_INVOICE_REGEX = /\binvoice\b/;
+const TXT_INVOICE_NUMBER_REGEX = /\binvoice\s+([A-Z0-9]+(?:[-/][A-Z0-9]+)*)\b/i;
+const TXT_PURCHASE_ORDER_NUMBER_REGEX =
+  /\b(?:purchase\s+order|po)\s*#?\s*([A-Z0-9]+(?:[-/][A-Z0-9]+)*)\b/i;
+
 export function parseTxtDocument(rawText: string, fileName?: string): ParsedDocument {
   const commonFields = extractCommonFields(rawText);
   const document = createEmptyParsedDocument(
@@ -28,24 +35,24 @@ export function parseTxtDocument(rawText: string, fileName?: string): ParsedDocu
 function detectTxtDocumentType(rawText: string): DocumentType {
   const normalizedText = rawText.toLowerCase();
 
-  if (/\bpurchase\s+order\b/.test(normalizedText) || /\bpo[-\s]?\d+\b/.test(normalizedText)) {
+  if (TXT_PURCHASE_ORDER_REGEX.test(normalizedText) || TXT_PO_NUMBER_REGEX.test(normalizedText)) {
     return 'PURCHASE_ORDER';
   }
 
-  if (/\binvoice\b/.test(normalizedText)) {
+  if (TXT_INVOICE_REGEX.test(normalizedText)) {
     return 'INVOICE';
   }
 
   return 'UNKNOWN';
 }
 
-function extractTxtDocumentNumber(rawText: string) {
-  const invoiceNumberMatch = rawText.match(/\binvoice\s+([A-Z0-9]+(?:[-/][A-Z0-9]+)*)\b/i);
+function extractTxtDocumentNumber(rawText: string): string | null {
+  const invoiceNumberMatch = rawText.match(TXT_INVOICE_NUMBER_REGEX);
   if (invoiceNumberMatch?.[1]) {
     return invoiceNumberMatch[1].toUpperCase();
   }
 
-  const poNumberMatch = rawText.match(/\b(?:purchase\s+order|po)\s*#?\s*([A-Z0-9]+(?:[-/][A-Z0-9]+)*)\b/i);
+  const poNumberMatch = rawText.match(TXT_PURCHASE_ORDER_NUMBER_REGEX);
   if (poNumberMatch?.[1]) {
     return poNumberMatch[1].toUpperCase();
   }
