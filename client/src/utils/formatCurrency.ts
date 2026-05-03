@@ -1,4 +1,4 @@
-export function formatCurrency(amount?: number | null, currency?: string | null) {
+export function formatCurrency(amount?: number | null, currency?: string | null): string {
   if (amount === null || amount === undefined) {
     return '-';
   }

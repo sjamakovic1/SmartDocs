@@ -15,24 +15,15 @@ export default function LineItemsTable({
   lineItems,
   onLineItemsChange,
 }: LineItemsTableProps) {
-  function addLineItem() {
-    onLineItemsChange([
-      ...lineItems,
-      {
-        id: `line-${Date.now()}`,
-        description: '',
-        quantity: 1,
-        unitPrice: 0,
-        lineTotal: 0,
-      },
-    ]);
+  function addLineItem(): void {
+    onLineItemsChange([...lineItems, createEmptyLineItem()]);
   }
 
-  function removeLineItem(id: string) {
+  function removeLineItem(id: string): void {
     onLineItemsChange(lineItems.filter((lineItem) => lineItem.id !== id));
   }
 
-  function updateLineItem(id: string, field: keyof LineItem, value: string | number | null) {
+  function updateLineItem(id: string, field: keyof LineItem, value: string | number | null): void {
     onLineItemsChange(
       lineItems.map((lineItem) =>
         lineItem.id === id
@@ -49,7 +40,7 @@ export default function LineItemsTable({
     id: string,
     field: keyof LineItem,
     event: ChangeEvent<HTMLInputElement>,
-  ) {
+  ): void {
     updateLineItem(id, field, event.target.value === '' ? null : Number(event.target.value));
   }
 
@@ -65,17 +56,7 @@ export default function LineItemsTable({
       </div>
 
       {lineItems.length === 0 ? (
-        <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-          <p className="font-medium text-slate-800">No line items extracted yet.</p>
-          <p className="mt-1 text-sm text-slate-500">
-            Add at least one line item so the document can be validated.
-          </p>
-          {!isReadOnly ? (
-            <Button className="mt-4" onClick={addLineItem} type="button">
-              Add line item
-            </Button>
-          ) : null}
-        </div>
+        <LineItemsEmptyState addLineItem={addLineItem} isReadOnly={isReadOnly} />
       ) : (
         <div className="mt-4">
           <p className="mb-3 text-sm text-slate-500">
@@ -83,75 +64,130 @@ export default function LineItemsTable({
           </p>
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-3 py-3">Description</th>
-                  <th className="px-3 py-3">Quantity</th>
-                  <th className="px-3 py-3">Unit price</th>
-                  <th className="px-3 py-3">Line total</th>
-                  {!isReadOnly ? <th className="px-3 py-3 text-right">Action</th> : null}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {lineItems.map((lineItem) => (
-                  <tr key={lineItem.id}>
-                    <td className="px-3 py-3">
-                      <input
-                        className="h-10 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                        disabled={isReadOnly}
-                        value={lineItem.description}
-                        onChange={(event) =>
-                          updateLineItem(lineItem.id, 'description', event.target.value)
-                        }
-                      />
-                    </td>
-                    <td className="px-3 py-3">
-                      <input
-                        className="h-10 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                        disabled={isReadOnly}
-                        type="number"
-                        value={lineItem.quantity}
-                        onChange={(event) => handleNumberChange(lineItem.id, 'quantity', event)}
-                      />
-                    </td>
-                    <td className="px-3 py-3">
-                      <input
-                        className="h-10 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                        disabled={isReadOnly}
-                        type="number"
-                        value={lineItem.unitPrice}
-                        onChange={(event) => handleNumberChange(lineItem.id, 'unitPrice', event)}
-                      />
-                    </td>
-                    <td className="px-3 py-3">
-                      <input
-                        className="h-10 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                        disabled={isReadOnly}
-                        type="number"
-                        value={lineItem.lineTotal}
-                        onChange={(event) => handleNumberChange(lineItem.id, 'lineTotal', event)}
-                      />
-                    </td>
-                    {!isReadOnly ? (
-                      <td className="px-3 py-3 text-right">
-                        <Button
-                          onClick={() => removeLineItem(lineItem.id)}
-                          type="button"
-                          variant="ghost"
-                        >
-                          Remove
-                        </Button>
-                      </td>
-                    ) : null}
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-3 py-3">Description</th>
+                    <th className="px-3 py-3">Quantity</th>
+                    <th className="px-3 py-3">Unit price</th>
+                    <th className="px-3 py-3">Line total</th>
+                    {!isReadOnly ? <th className="px-3 py-3 text-right">Action</th> : null}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {lineItems.map((lineItem) => (
+                    <LineItemRow
+                      handleNumberChange={handleNumberChange}
+                      isReadOnly={isReadOnly}
+                      key={lineItem.id}
+                      lineItem={lineItem}
+                      removeLineItem={removeLineItem}
+                      updateLineItem={updateLineItem}
+                    />
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       )}
     </Card>
+  );
+}
+
+function createEmptyLineItem(): LineItem {
+  return {
+    id: `line-${Date.now()}`,
+    description: '',
+    quantity: 1,
+    unitPrice: 0,
+    lineTotal: 0,
+  };
+}
+
+function LineItemsEmptyState({
+  addLineItem,
+  isReadOnly,
+}: {
+  addLineItem: () => void;
+  isReadOnly: boolean;
+}) {
+  return (
+    <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+      <p className="font-medium text-slate-800">No line items extracted yet.</p>
+      <p className="mt-1 text-sm text-slate-500">
+        Add at least one line item so the document can be validated.
+      </p>
+      {!isReadOnly ? (
+        <Button className="mt-4" onClick={addLineItem} type="button">
+          Add line item
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function LineItemRow({
+  handleNumberChange,
+  isReadOnly,
+  lineItem,
+  removeLineItem,
+  updateLineItem,
+}: {
+  handleNumberChange: (
+    id: string,
+    field: keyof LineItem,
+    event: ChangeEvent<HTMLInputElement>,
+  ) => void;
+  isReadOnly: boolean;
+  lineItem: LineItem;
+  removeLineItem: (id: string) => void;
+  updateLineItem: (id: string, field: keyof LineItem, value: string | number | null) => void;
+}) {
+  return (
+    <tr>
+      <td className="px-3 py-3">
+        <input
+          className="h-10 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+          disabled={isReadOnly}
+          value={lineItem.description}
+          onChange={(event) => updateLineItem(lineItem.id, 'description', event.target.value)}
+        />
+      </td>
+      <td className="px-3 py-3">
+        <input
+          className="h-10 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+          disabled={isReadOnly}
+          type="number"
+          value={lineItem.quantity}
+          onChange={(event) => handleNumberChange(lineItem.id, 'quantity', event)}
+        />
+      </td>
+      <td className="px-3 py-3">
+        <input
+          className="h-10 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+          disabled={isReadOnly}
+          type="number"
+          value={lineItem.unitPrice}
+          onChange={(event) => handleNumberChange(lineItem.id, 'unitPrice', event)}
+        />
+      </td>
+      <td className="px-3 py-3">
+        <input
+          className="h-10 w-full rounded-md border border-slate-200 px-3 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+          disabled={isReadOnly}
+          type="number"
+          value={lineItem.lineTotal}
+          onChange={(event) => handleNumberChange(lineItem.id, 'lineTotal', event)}
+        />
+      </td>
+      {!isReadOnly ? (
+        <td className="px-3 py-3 text-right">
+          <Button onClick={() => removeLineItem(lineItem.id)} type="button" variant="ghost">
+            Remove
+          </Button>
+        </td>
+      ) : null}
+    </tr>
   );
 }

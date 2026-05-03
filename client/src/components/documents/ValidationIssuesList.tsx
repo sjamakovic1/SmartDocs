@@ -13,18 +13,24 @@ export default function ValidationIssuesList({ issues }: { issues: ValidationIss
       <div className="mt-4 space-y-3">
         {openIssues.length > 0 ? (
           openIssues.map((issue) => (
-            <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm" key={issue.id}>
-              <div className="flex flex-wrap items-center gap-2">
-                <SeverityBadge severity={issue.severity} />
-                <span className="text-sm font-semibold text-slate-700">{issue.field}</span>
-              </div>
-              <p className="mt-2 text-sm text-slate-600">{issue.message}</p>
-            </div>
+            <ValidationIssueCard issue={issue} key={issue.id} />
           ))
         ) : (
           <p className="text-sm text-slate-500">No open validation issues.</p>
         )}
       </div>
     </Card>
+  );
+}
+
+function ValidationIssueCard({ issue }: { issue: ValidationIssue }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        <SeverityBadge severity={issue.severity} />
+        <span className="text-sm font-semibold text-slate-700">{issue.field}</span>
+      </div>
+      <p className="mt-2 text-sm text-slate-600">{issue.message}</p>
+    </div>
   );
 }

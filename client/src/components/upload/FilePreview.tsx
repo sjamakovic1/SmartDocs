@@ -3,6 +3,9 @@ import { useEffect, useState } from 'react';
 import Button from '../common/Button';
 import Card from '../common/Card';
 
+const BYTES_IN_KB = 1024;
+const BYTES_IN_MB = BYTES_IN_KB * 1024;
+
 interface FilePreviewProps {
   file: File | null;
   onRemoveFile: () => void;
@@ -58,10 +61,10 @@ export default function FilePreview({ file, onRemoveFile }: FilePreviewProps) {
   );
 }
 
-function formatFileSize(size: number) {
-  if (size < 1024 * 1024) {
-    return `${Math.max(1, Math.round(size / 1024))} KB`;
+function formatFileSize(size: number): string {
+  if (size < BYTES_IN_MB) {
+    return `${Math.max(1, Math.round(size / BYTES_IN_KB))} KB`;
   }
 
-  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  return `${(size / BYTES_IN_KB / BYTES_IN_KB).toFixed(1)} MB`;
 }

@@ -3,14 +3,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import Card from '../common/Card';
 
 export default function CurrencyTotals({ documents }: { documents: Document[] }) {
-  const totals = documents.reduce<Record<string, number>>((acc, document) => {
-    if (document.currency && document.total && document.status !== 'REJECTED') {
-      acc[document.currency] = (acc[document.currency] ?? 0) + document.total;
-    }
-    return acc;
-  }, {});
-
-  const entries = Object.entries(totals);
+  const entries = getCurrencyTotals(documents);
 
   return (
     <Card className="p-5">
@@ -32,4 +25,15 @@ export default function CurrencyTotals({ documents }: { documents: Document[] })
       </div>
     </Card>
   );
+}
+
+function getCurrencyTotals(documents: Document[]): Array<[string, number]> {
+  const totals = documents.reduce<Record<string, number>>((acc, document) => {
+    if (document.currency && document.total && document.status !== 'REJECTED') {
+      acc[document.currency] = (acc[document.currency] ?? 0) + document.total;
+    }
+    return acc;
+  }, {});
+
+  return Object.entries(totals);
 }

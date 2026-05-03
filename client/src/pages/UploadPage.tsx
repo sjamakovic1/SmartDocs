@@ -9,16 +9,20 @@ import { getApiErrorMessage } from '../services/api';
 import { documentService } from '../services/documentService';
 import { isSupportedUploadFile } from '../utils/uploadValidation';
 
+const UNSUPPORTED_FILE_MESSAGE =
+  'Unsupported file type. Supported formats are PDF, CSV, TXT, PNG, JPG, and JPEG.';
+const MISSING_FILE_MESSAGE = 'Choose a supported file before processing.';
+
 export default function UploadPage() {
   const navigate = useNavigate();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  function handleFileSelect(file: File) {
+  function handleFileSelect(file: File): void {
     if (!isSupportedUploadFile(file)) {
       setSelectedFile(null);
-      setUploadError('Unsupported file type. Supported formats are PDF, CSV, TXT, PNG, JPG, and JPEG.');
+      setUploadError(UNSUPPORTED_FILE_MESSAGE);
       return;
     }
 
@@ -26,19 +30,19 @@ export default function UploadPage() {
     setUploadError(null);
   }
 
-  function removeSelectedFile() {
+  function removeSelectedFile(): void {
     setSelectedFile(null);
     setUploadError(null);
   }
 
-  async function handleUpload() {
+  async function handleUpload(): Promise<void> {
     if (!selectedFile) {
-      setUploadError('Choose a supported file before processing.');
+      setUploadError(MISSING_FILE_MESSAGE);
       return;
     }
 
     if (!isSupportedUploadFile(selectedFile)) {
-      setUploadError('Unsupported file type. Supported formats are PDF, CSV, TXT, PNG, JPG, and JPEG.');
+      setUploadError(UNSUPPORTED_FILE_MESSAGE);
       return;
     }
 

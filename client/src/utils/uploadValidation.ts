@@ -1,6 +1,6 @@
-const supportedExtensions = ['.pdf', '.csv', '.txt', '.png', '.jpg', '.jpeg'];
+const SUPPORTED_EXTENSIONS = ['.pdf', '.csv', '.txt', '.png', '.jpg', '.jpeg'];
 
-const supportedMimeTypes = [
+const SUPPORTED_MIME_TYPES = [
   'application/pdf',
   'text/csv',
   'text/plain',
@@ -8,18 +8,18 @@ const supportedMimeTypes = [
   'image/jpeg',
 ];
 
-export const uploadAccept = [...supportedExtensions, ...supportedMimeTypes].join(',');
+export const uploadAccept = [...SUPPORTED_EXTENSIONS, ...SUPPORTED_MIME_TYPES].join(',');
 
-export function isSupportedUploadFile(file: File) {
+export function isSupportedUploadFile(file: File): boolean {
   const extension = getFileExtension(file.name);
-  return supportedExtensions.includes(extension) || supportedMimeTypes.includes(file.type);
+  return SUPPORTED_EXTENSIONS.includes(extension) || SUPPORTED_MIME_TYPES.includes(file.type);
 }
 
-export function getSupportedFormatsLabel() {
+export function getSupportedFormatsLabel(): string {
   return 'PDF, CSV, TXT, PNG, JPG, JPEG';
 }
 
-function getFileExtension(fileName: string) {
+function getFileExtension(fileName: string): string {
   const dotIndex = fileName.lastIndexOf('.');
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : '';
 }

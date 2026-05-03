@@ -1,6 +1,18 @@
 import { useLocation } from 'react-router-dom';
 
-const pageCopy: Record<string, { title: string; subtitle: string }> = {
+type PageCopy = { title: string; subtitle: string };
+
+const DOCUMENT_REVIEW_PAGE_COPY: PageCopy = {
+  title: 'Document review',
+  subtitle: 'Review extracted fields, validation issues, and source text.',
+};
+
+const FALLBACK_PAGE_COPY: PageCopy = {
+  title: 'Smart Document Processing',
+  subtitle: 'Review workspace',
+};
+
+const PAGE_COPY: Record<string, PageCopy> = {
   '/': {
     title: 'Dashboard',
     subtitle: 'Monitor document status, validation issues, and extracted totals.',
@@ -17,17 +29,7 @@ const pageCopy: Record<string, { title: string; subtitle: string }> = {
 
 export default function Header() {
   const location = useLocation();
-  const copy =
-    pageCopy[location.pathname] ??
-    (location.pathname.startsWith('/documents/')
-      ? {
-          title: 'Document review',
-          subtitle: 'Review extracted fields, validation issues, and source text.',
-        }
-      : {
-          title: 'Smart Document Processing',
-          subtitle: 'Review workspace',
-        });
+  const copy = getPageCopy(location.pathname);
 
   return (
     <header className="border-b border-slate-200 bg-white px-4 py-5 shadow-sm sm:px-6 lg:px-8">
@@ -43,4 +45,16 @@ export default function Header() {
       </div>
     </header>
   );
+}
+
+function getPageCopy(pathname: string): PageCopy {
+  if (PAGE_COPY[pathname]) {
+    return PAGE_COPY[pathname];
+  }
+
+  if (pathname.startsWith('/documents/')) {
+    return DOCUMENT_REVIEW_PAGE_COPY;
+  }
+
+  return FALLBACK_PAGE_COPY;
 }

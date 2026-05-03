@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 import type { Document, LineItem, ValidationIssue } from '../types/document';
 import { api } from './api';
 
@@ -35,12 +37,12 @@ export type DocumentUpdatePayload = Pick<
 >;
 
 export const documentService = {
-  async getDocuments() {
+  async getDocuments(): Promise<Document[]> {
     const response = await api.get<DocumentsResponse>('/documents');
     return response.data.documents.map(normalizeDocument);
   },
 
-  async getDocumentById(id: string) {
+  async getDocumentById(id: string): Promise<Document | null> {
     try {
       const response = await api.get<DocumentResponse>(`/documents/${id}`);
       return normalizeDocument(response.data.document);
@@ -53,7 +55,7 @@ export const documentService = {
     }
   },
 
-  async uploadDocument(file: File) {
+  async uploadDocument(file: File): Promise<Document> {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -61,44 +63,44 @@ export const documentService = {
     return normalizeDocument(response.data.document);
   },
 
-  async deleteDocument(id: string) {
+  async deleteDocument(id: string): Promise<void> {
     await api.delete(`/documents/${id}`);
   },
 
-  async getOriginalFileUrl(id: string) {
+  async getOriginalFileUrl(id: string): Promise<string> {
     const response = await api.get<FileUrlResponse>(`/documents/${id}/file-url`);
     return response.data.signedUrl;
   },
 
-  async revalidateDocument(id: string) {
+  async revalidateDocument(id: string): Promise<Document> {
     const response = await api.post<DocumentResponse>(`/documents/${id}/validate`);
     return normalizeDocument(response.data.document);
   },
 
-  async updateDocument(id: string, payload: DocumentUpdatePayload) {
+  async updateDocument(id: string, payload: DocumentUpdatePayload): Promise<Document> {
     const response = await api.put<DocumentResponse>(`/documents/${id}`, payload);
     return normalizeDocument(response.data.document);
   },
 
-  async confirmDocument(id: string) {
+  async confirmDocument(id: string): Promise<Document> {
     const response = await api.post<DocumentResponse>(`/documents/${id}/confirm`);
     return normalizeDocument(response.data.document);
   },
 
-  async rejectDocument(id: string, rejectReason: string) {
+  async rejectDocument(id: string, rejectReason: string): Promise<Document> {
     const response = await api.post<DocumentResponse>(`/documents/${id}/reject`, {
       rejectReason,
     });
     return normalizeDocument(response.data.document);
   },
 
-  async reopenDocument(id: string) {
+  async reopenDocument(id: string): Promise<Document> {
     const response = await api.post<DocumentResponse>(`/documents/${id}/reopen`);
     return normalizeDocument(response.data.document);
   },
 };
 
-export function normalizeDocumentResponse(document: BackendDocument) {
+export function normalizeDocumentResponse(document: BackendDocument): Document {
   return normalizeDocument(document);
 }
 
@@ -136,14 +138,6 @@ function normalizeValidationIssue(
   };
 }
 
-function isNotFoundError(error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error &&
-    typeof error.response === 'object' &&
-    error.response !== null &&
-    'status' in error.response &&
-    error.response.status === 404
-  );
+function isNotFoundError(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 404;
 }

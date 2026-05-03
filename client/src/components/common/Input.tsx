@@ -6,7 +6,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export default function Input({ className = '', label, id, ...props }: InputProps) {
   return (
-    <label className="block">
+    <label className="block" htmlFor={id}>
       {label ? (
         <span className="mb-1.5 block text-sm font-medium text-slate-700">{label}</span>
       ) : null}

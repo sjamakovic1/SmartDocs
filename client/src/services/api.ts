@@ -1,13 +1,16 @@
 import axios from 'axios';
 
+const BACKEND_UNAVAILABLE_MESSAGE = 'Backend API is not available. Please start the server.';
+const GENERIC_ERROR_MESSAGE = 'Something went wrong. Please try again.';
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? '/api',
 });
 
-export function getApiErrorMessage(error: unknown) {
+export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return 'Backend API is not available. Please start the server.';
+      return BACKEND_UNAVAILABLE_MESSAGE;
     }
 
     const apiErrorMessage = error.response.data?.error?.message;
@@ -21,5 +24,5 @@ export function getApiErrorMessage(error: unknown) {
     }
   }
 
-  return 'Something went wrong. Please try again.';
+  return GENERIC_ERROR_MESSAGE;
 }
