@@ -1,14 +1,14 @@
 import { Prisma } from '@prisma/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ValidationIssue } from '../types/document';
+import type { ValidationIssue } from '../../../src/types/document';
 import {
   confirmStoredDocument,
   rejectStoredDocument,
   reopenStoredDocument,
   updateStoredDocument,
   uploadAndParseDocument,
-} from './documentService';
+} from '../../../src/services/documentService';
 
 const prismaMocks = vi.hoisted(() => {
   const tx = {
@@ -41,11 +41,11 @@ const prismaMocks = vi.hoisted(() => {
 
 const storageUploadMock = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
 
-vi.mock('../config/prisma', () => ({
+vi.mock('../../../src/config/prisma', () => ({
   prisma: prismaMocks.prisma,
 }));
 
-vi.mock('../config/supabase', () => ({
+vi.mock('../../../src/config/supabase', () => ({
   getStorageBucketName: () => 'documents',
   supabase: {
     storage: {

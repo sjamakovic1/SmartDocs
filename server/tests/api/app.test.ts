@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import app from './app';
-import type { StoredDocument } from './services/documentService';
+import app from '../../src/app';
+import type { StoredDocument } from '../../src/services/documentService';
 
 const serviceMocks = vi.hoisted(() => {
   class UnsupportedFileTypeError extends Error {
@@ -70,7 +70,7 @@ const serviceMocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('./services/documentService', () => serviceMocks);
+vi.mock('../../src/services/documentService', () => serviceMocks);
 
 function mockDocument(overrides: Partial<StoredDocument> = {}): StoredDocument {
   return {

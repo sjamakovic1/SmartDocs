@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeOcrText } from './normalizeOcrText';
+import { normalizeOcrText } from '../../../src/extraction/normalizeOcrText';
 
 describe('normalizeOcrText', () => {
   it.each([

@@ -1,7 +1,42 @@
 import type { LineItem } from '../types/document';
 import { parseLocalizedNumber } from './money';
 
-const lineMoneyPattern = String.raw`[$\u00A3\u20AC]?\s*[0-9][\d,]*(?:\.\d+)?(?:\s*(?:EUR|BAM|USD|GBP|AED))?`;
+type CandidateLinesResult = {
+  candidates: string[];
+  hasHeader: boolean;
+};
+
+const LINE_MONEY_PATTERN = String.raw`[$\u00A3\u20AC]?\s*[0-9][\d,]*(?:\.\d+)?(?:\s*(?:EUR|BAM|USD|GBP|AED))?`;
+const HEADER_LINE_REGEX = {
+  description: /description|item|service|product|hrs\/qty/i,
+  quantity: /qty|quantity|hrs\/qty/i,
+  total: /price|amount|total/i,
+};
+const TWO_LINE_LEADING_QUANTITY_REGEX = /^([0-9]+(?:[.,][0-9]+)?)\s+(.+)$/;
+const LEADING_QUANTITY_LINE_REGEX = new RegExp(
+  String.raw`^([0-9]+(?:[.,][0-9]+)?)\s+(.+?)\s+(${LINE_MONEY_PATTERN})\s+(?:[0-9]+(?:[.,][0-9]+)?%)\s+(${LINE_MONEY_PATTERN})$`,
+  'i',
+);
+const QUANTITY_PRICE_UNIT_LINE_REGEX = new RegExp(
+  String.raw`^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)\s+(?:each|unit|units|nos|pcs)\s+(${LINE_MONEY_PATTERN})\s+(?:each|unit|units|nos|pcs)\s+(${LINE_MONEY_PATTERN})$`,
+  'i',
+);
+const WITH_UNIT_LINE_REGEX = new RegExp(
+  String.raw`^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)\s+(?:each|unit|units|nos|pcs)\s+(${LINE_MONEY_PATTERN})\s+(?:[0-9]+(?:[.,][0-9]+)?%\s+)?(${LINE_MONEY_PATTERN})$`,
+  'i',
+);
+const SIMPLE_TRAILING_NUMBERS_LINE_REGEX = new RegExp(
+  String.raw`^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)\s+(${LINE_MONEY_PATTERN})\s+(${LINE_MONEY_PATTERN})$`,
+  'i',
+);
+const MONEY_QUANTITY_MONEY_LINE_REGEX = new RegExp(
+  String.raw`^(.+?)\s+((?:[$\u00A3\u20AC]\s*[0-9][\d,]*(?:\.\d+)?|[0-9][\d,]*(?:\.\d+)?\s*(?:EUR|BAM|USD|GBP|AED)))\s+([0-9]+(?:[.,][0-9]+)?)\s+(${LINE_MONEY_PATTERN})$`,
+  'i',
+);
+const PERCENTAGE_REGEX = /\b[0-9]+(?:[.,][0-9]+)?%/g;
+const MONEY_VALUE_FILTER_REGEX = /[$\u00A3\u20AC]|\b(?:EUR|BAM|USD|GBP|AED)\b|[0-9]/i;
+const SUMMARY_LINE_REGEX =
+  /\b(subtotal|sub\s*total|total|total\s+due|grand\s+total|amount\s+due|tax|vat|tva|balance|paid|bank|from|to|invoice\s+number|invoice\s+date|due\s+date|payment\s+method|terms|conditions)\b/i;
 
 export function extractLineItems(rawText: string): LineItem[] {
   const lines = rawText
@@ -30,11 +65,11 @@ export function extractLineItems(rawText: string): LineItem[] {
   return lineItems;
 }
 
-function getCandidateLines(lines: string[]) {
+function getCandidateLines(lines: string[]): CandidateLinesResult {
   const headerIndex = lines.findIndex((line) =>
-    /description|item|service|product|hrs\/qty/i.test(line) &&
-    /qty|quantity|hrs\/qty/i.test(line) &&
-    /price|amount|total/i.test(line),
+    HEADER_LINE_REGEX.description.test(line) &&
+    HEADER_LINE_REGEX.quantity.test(line) &&
+    HEADER_LINE_REGEX.total.test(line),
   );
 
   return {
@@ -51,7 +86,7 @@ function parseLineItemLine(line: string, index: number): LineItem | null {
 
 function parseTwoLineLineItem(lines: string[], lineIndex: number, itemIndex: number): LineItem | null {
   const firstLine = lines[lineIndex];
-  const leadingMatch = firstLine.match(/^([0-9]+(?:[.,][0-9]+)?)\s+(.+)$/);
+  const leadingMatch = firstLine.match(TWO_LINE_LEADING_QUANTITY_REGEX);
   if (!leadingMatch || isSummaryLine(firstLine)) {
     return null;
   }
@@ -78,9 +113,7 @@ function parseTwoLineLineItem(lines: string[], lineIndex: number, itemIndex: num
 }
 
 function parseLeadingQuantityLine(line: string, index: number): LineItem | null {
-  const match = line.match(
-    new RegExp(String.raw`^([0-9]+(?:[.,][0-9]+)?)\s+(.+?)\s+(${lineMoneyPattern})\s+(?:[0-9]+(?:[.,][0-9]+)?%)\s+(${lineMoneyPattern})$`, 'i'),
-  );
+  const match = line.match(LEADING_QUANTITY_LINE_REGEX);
 
   if (!match) {
     return null;
@@ -90,9 +123,7 @@ function parseLeadingQuantityLine(line: string, index: number): LineItem | null 
 }
 
 function parseTrailingNumbersLine(line: string, index: number): LineItem | null {
-  const quantityAndPriceUnitMatch = line.match(
-    new RegExp(String.raw`^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)\s+(?:each|unit|units|nos|pcs)\s+(${lineMoneyPattern})\s+(?:each|unit|units|nos|pcs)\s+(${lineMoneyPattern})$`, 'i'),
-  );
+  const quantityAndPriceUnitMatch = line.match(QUANTITY_PRICE_UNIT_LINE_REGEX);
   if (quantityAndPriceUnitMatch) {
     return makeLineItem(
       index,
@@ -103,16 +134,12 @@ function parseTrailingNumbersLine(line: string, index: number): LineItem | null 
     );
   }
 
-  const withUnitMatch = line.match(
-    new RegExp(String.raw`^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)\s+(?:each|unit|units|nos|pcs)\s+(${lineMoneyPattern})\s+(?:[0-9]+(?:[.,][0-9]+)?%\s+)?(${lineMoneyPattern})$`, 'i'),
-  );
+  const withUnitMatch = line.match(WITH_UNIT_LINE_REGEX);
   if (withUnitMatch) {
     return makeLineItem(index, withUnitMatch[1], withUnitMatch[2], withUnitMatch[3], withUnitMatch[4]);
   }
 
-  const simpleMatch = line.match(
-    new RegExp(String.raw`^(.+?)\s+([0-9]+(?:[.,][0-9]+)?)\s+(${lineMoneyPattern})\s+(${lineMoneyPattern})$`, 'i'),
-  );
+  const simpleMatch = line.match(SIMPLE_TRAILING_NUMBERS_LINE_REGEX);
   if (simpleMatch) {
     return makeLineItem(index, simpleMatch[1], simpleMatch[2], simpleMatch[3], simpleMatch[4]);
   }
@@ -121,9 +148,7 @@ function parseTrailingNumbersLine(line: string, index: number): LineItem | null 
 }
 
 function parseMoneyQuantityMoneyLine(line: string, index: number): LineItem | null {
-  const match = line.match(
-    new RegExp(String.raw`^(.+?)\s+((?:[$\u00A3\u20AC]\s*[0-9][\d,]*(?:\.\d+)?|[0-9][\d,]*(?:\.\d+)?\s*(?:EUR|BAM|USD|GBP|AED)))\s+([0-9]+(?:[.,][0-9]+)?)\s+(${lineMoneyPattern})$`, 'i'),
-  );
+  const match = line.match(MONEY_QUANTITY_MONEY_LINE_REGEX);
 
   if (!match) {
     return null;
@@ -156,13 +181,13 @@ function makeLineItem(
   };
 }
 
-function extractMoneyValues(line: string) {
-  const withoutPercentages = line.replace(/\b[0-9]+(?:[.,][0-9]+)?%/g, ' ');
-  return [...withoutPercentages.matchAll(new RegExp(lineMoneyPattern, 'gi'))]
+function extractMoneyValues(line: string): string[] {
+  const withoutPercentages = line.replace(PERCENTAGE_REGEX, ' ');
+  return [...withoutPercentages.matchAll(new RegExp(LINE_MONEY_PATTERN, 'gi'))]
     .map((match) => match[0])
-    .filter((value) => /[$\u00A3\u20AC]|\b(?:EUR|BAM|USD|GBP|AED)\b|[0-9]/i.test(value));
+    .filter((value) => MONEY_VALUE_FILTER_REGEX.test(value));
 }
 
-function isSummaryLine(line: string) {
-  return /\b(subtotal|sub\s*total|total|total\s+due|grand\s+total|amount\s+due|tax|vat|tva|balance|paid|bank|from|to|invoice\s+number|invoice\s+date|due\s+date|payment\s+method|terms|conditions)\b/i.test(line);
+function isSummaryLine(line: string): boolean {
+  return SUMMARY_LINE_REGEX.test(line);
 }

@@ -5,25 +5,18 @@ import path from 'node:path';
 import documentRouter from './routes/documentRoutes';
 import { apiErrorHandler, sendApiError } from './utils/apiError';
 
+const HEALTH_RESPONSE = {
+  message: 'SmartDocs API is running',
+  status: 'ok',
+};
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
-  res.json({
-    message: 'SmartDocs API is running',
-    status: 'ok',
-  });
-});
-
-app.post('/api/upload', (_req, res) => {
-  sendApiError(
-    res,
-    501,
-    'UPLOAD_ENDPOINT_NOT_IMPLEMENTED',
-    'Document upload endpoint is not implemented yet.',
-  );
+  res.json(HEALTH_RESPONSE);
 });
 
 app.use('/api/documents', documentRouter);

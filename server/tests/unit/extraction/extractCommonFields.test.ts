@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractCommonFields } from './extractCommonFields';
+import { extractCommonFields } from '../../../src/extraction/extractCommonFields';
 
 describe('extractCommonFields', () => {
   it('extracts generated invoice fields', () => {

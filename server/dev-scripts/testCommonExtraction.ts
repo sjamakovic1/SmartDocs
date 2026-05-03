@@ -1,6 +1,6 @@
-import { extractCommonFields } from '../extraction/extractCommonFields';
-import { parsePdfText } from '../parsers/pdfParser';
-import { validateDocument } from '../validation/documentValidation';
+import { extractCommonFields } from '../src/extraction/extractCommonFields';
+import { parsePdfText } from '../src/parsers/pdfParser';
+import { validateDocument } from '../src/validation/documentValidation';
 
 const generatedPdfText = `Invoice
 Supplier: Company 5

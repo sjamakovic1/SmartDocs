@@ -27,10 +27,10 @@ export const fieldAliases = {
   total: ['Total Due', 'Grand Total', 'Amount Due', 'Balance Due', 'Prix TTC', 'Total TTC', 'Total'],
 } as const;
 
-export function aliasPattern(aliases: readonly string[]) {
+export function aliasPattern(aliases: readonly string[]): string {
   return aliases.map(escapeRegExp).join('|');
 }
 
-function escapeRegExp(value: string) {
+function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
 }

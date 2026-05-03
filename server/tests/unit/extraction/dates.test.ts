@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseDateToIso } from './dates';
+import { parseDateToIso } from '../../../src/extraction/dates';
 
 describe('parseDateToIso', () => {
   it.each([

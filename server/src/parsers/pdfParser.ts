@@ -5,10 +5,13 @@ import { createEmptyParsedDocument, type ParsedDocument } from './parserTypes';
 
 export async function parsePdfDocument(buffer: Buffer, fileName?: string): Promise<ParsedDocument> {
   const parser = new PDFParse({ data: buffer });
-  const parsedPdf = await parser.getText();
-  await parser.destroy();
 
-  return parsePdfText(parsedPdf.text, fileName);
+  try {
+    const parsedPdf = await parser.getText();
+    return parsePdfText(parsedPdf.text, fileName);
+  } finally {
+    await parser.destroy();
+  }
 }
 
 export function parsePdfText(rawText: string, fileName?: string): ParsedDocument {
@@ -35,7 +38,7 @@ export function parsePdfText(rawText: string, fileName?: string): ParsedDocument
   return document;
 }
 
-function normalizePdfText(text: string) {
+function normalizePdfText(text: string): string {
   return text
     .replace(/\r/g, '\n')
     .replace(/[ \t]+/g, ' ')
